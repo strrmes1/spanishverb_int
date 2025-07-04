@@ -163,12 +163,26 @@ st.markdown("""
         margin: 1rem 0;
         box-shadow: 0 8px 30px rgba(0,0,0,0.1);
         transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .card-container:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 35px rgba(0,0,0,0.15);
     }
     
     .card-container.revealed {
         background: linear-gradient(135deg, #48ca8b 0%, #2dd4bf 100%);
         transform: scale(1.02);
         box-shadow: 0 12px 40px rgba(72, 202, 139, 0.3);
+    }
+    
+    /* Контейнер для основного контента */
+    .main-content {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 0 1rem;
     }
     /* Менее заметная кнопка сброса */
     .reset-btn {
@@ -691,151 +705,6 @@ def show_study_tips():
         - Много карточек **"Снова"** - изучаете слишком быстро
         """)
 
-def show_statistics():
-    """Показывает подробную статистику"""
-    if not st.session_state.cards:
-        st.info("Пока нет данных для статистики. Начните изучение!")
-        return
-    
-    st.header("📊 Детальная статистика")
-    
-    # Общая статистика
-    total_cards = len(st.session_state.cards)
-    total_reviews = sum(card.total_reviews for card in st.session_state.cards.values())
-    total_correct = sum(card.correct_reviews for card in st.session_state.cards.values())
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("📚 Всего карточек", total_cards)
-    with col2:
-        st.metric("🔄 Всего повторений", total_reviews)
-    with col3:
-        accuracy = (total_correct / total_reviews * 100) if total_reviews > 0 else 0
-        st.metric("🎯 Точность", f"{accuracy:.1f}%")
-    with col4:
-        due_today = len(get_due_cards())
-        st.metric("⏰ К повторению", due_today)
-    
-    # Статистика по категориям карточек
-    st.subheader("📈 Распределение карточек")
-    
-    today = datetime.date.today().isoformat()
-    categories = {
-        'Новые': 0,
-        'Изучаемые': 0,
-        'Повторение': 0,
-        'Завершенные': 0
-    }
-    
-    for card in st.session_state.cards.values():
-        if card.total_reviews == 0:
-            categories['Новые'] += 1
-        elif card.repetitions < 5:
-            categories['Изучаемые'] += 1
-        elif card.next_review_date <= today:
-            categories['Повторение'] += 1
-        else:
-            categories['Завершенные'] += 1
-    
-    col1, col2, col3, col4 = st.columns(4)
-    cols = [col1, col2, col3, col4]
-    
-    for i, (category, count) in enumerate(categories.items()):
-        with cols[i]:
-            st.metric(category, count)
-    
-    # График прогресса по дням
-    if total_reviews > 0:
-        st.subheader("📅 Активность по времени")
-        
-        # Создаем данные для графика
-        review_dates = []
-        for card in st.session_state.cards.values():
-            if card.last_review_date:
-                review_dates.append(card.last_review_date)
-        
-        if review_dates:
-            df = pd.DataFrame({'date': review_dates})
-            df['date'] = pd.to_datetime(df['date'])
-            daily_reviews = df.groupby(df['date'].dt.date).size().reset_index()
-            daily_reviews.columns = ['Дата', 'Повторений']
-            daily_reviews['Дата'] = daily_reviews['Дата'].astype(str)
-            
-            if PLOTLY_AVAILABLE:
-                fig = px.bar(daily_reviews, x='Дата', y='Повторений', 
-                            title='Количество повторений по дням')
-                
-                # Упрощаем график - убираем лишние элементы управления
-                fig.update_layout(
-                    showlegend=False,
-                    xaxis=dict(
-                        title="Дата",
-                        showgrid=True,
-                        fixedrange=True  # Отключаем зум по X
-                    ),
-                    yaxis=dict(
-                        title="Количество повторений",
-                        showgrid=True,
-                        fixedrange=True  # Отключаем зум по Y
-                    ),
-                    dragmode=False,  # Отключаем драг
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)'
-                )
-                
-                # Убираем тулбар и делаем график статичным
-                config = {
-                    'displayModeBar': False,
-                    'staticPlot': False,
-                    'scrollZoom': False,
-                    'doubleClick': False,
-                    'showTips': False,
-                    'displaylogo': False
-                }
-                
-                st.plotly_chart(fig, use_container_width=True, config=config)
-            else:
-                # Простая таблица вместо графика
-                st.dataframe(daily_reviews, use_container_width=True, hide_index=True)
-                st.caption("📊 Для графика установите plotly: pip install plotly")
-    
-    # Статистика по временам
-    st.subheader("⏰ Статистика по временам")
-    
-    tense_stats = {}
-    for card in st.session_state.cards.values():
-        tense = card.tense
-        if tense not in tense_stats:
-            tense_stats[tense] = {
-                'total': 0,
-                'reviews': 0,
-                'correct': 0
-            }
-        
-        tense_stats[tense]['total'] += 1
-        tense_stats[tense]['reviews'] += card.total_reviews
-        tense_stats[tense]['correct'] += card.correct_reviews
-    
-    tense_names = {
-        'presente': 'Presente',
-        'indefinido': 'Pretérito Indefinido',
-        'subjuntivo': 'Subjuntivo',
-        'imperfecto': 'Imperfecto'
-    }
-    
-    for tense, stats in tense_stats.items():
-        tense_name = tense_names.get(tense, tense)
-        accuracy = (stats['correct'] / stats['reviews'] * 100) if stats['reviews'] > 0 else 0
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric(f"{tense_name} - Карточек", stats['total'])
-        with col2:
-            st.metric(f"{tense_name} - Повторений", stats['reviews'])
-        with col3:
-            st.metric(f"{tense_name} - Точность", f"{accuracy:.1f}%")
-
 def apply_settings():
     """Применяет настройки и сохраняет их"""
     if st.session_state.settings.get('auto_save', True):
@@ -970,12 +839,6 @@ def main():
     with st.sidebar:
         st.header("⚙️ Настройки")
         
-        # Советы по изучению - в самом начале
-        if st.button("💡 Советы по эффективному изучению", key="study_tips", use_container_width=True):
-            st.session_state.show_tips = True
-        
-        st.markdown("---")
-        
         # Выбор времен
         st.subheader("📚 Времена для изучения")
         tense_options = {
@@ -1041,7 +904,9 @@ def main():
         st.markdown("---")
         
         # Статистика в боковой панели
-        st.subheader("📊 Сегодня")
+        st.subheader("📊 Статистика")
+        
+        # Краткая статистика
         col1, col2 = st.columns(2)
         with col1:
             st.metric("Повторений", st.session_state.daily_stats['reviews_today'])
@@ -1051,20 +916,81 @@ def main():
             due_count = len(get_due_cards())
             st.metric("К повторению", due_count)
         
-        # Общая точность
+        # Общая статистика
+        total_cards = len(st.session_state.cards)
         total_reviews = sum(card.total_reviews for card in st.session_state.cards.values())
         total_correct = sum(card.correct_reviews for card in st.session_state.cards.values())
         accuracy = (total_correct / total_reviews * 100) if total_reviews > 0 else 0
+        
+        st.metric("📚 Всего карточек", total_cards)
         st.metric("🎯 Общая точность", f"{accuracy:.1f}%")
         
-        # Информация о хранении данных
+        # Детальная статистика в expander
+        if total_cards > 0:
+            with st.expander("📈 Подробная статистика"):
+                # Статистика по категориям карточек
+                today = datetime.date.today().isoformat()
+                categories = {
+                    'Новые': 0,
+                    'Изучаемые': 0,
+                    'Повторение': 0,
+                    'Завершенные': 0
+                }
+                
+                for card in st.session_state.cards.values():
+                    if card.total_reviews == 0:
+                        categories['Новые'] += 1
+                    elif card.repetitions < 5:
+                        categories['Изучаемые'] += 1
+                    elif card.next_review_date <= today:
+                        categories['Повторение'] += 1
+                    else:
+                        categories['Завершенные'] += 1
+                
+                for category, count in categories.items():
+                    st.metric(category, count)
+                
+                # Статистика по временам
+                st.markdown("**По временам:**")
+                tense_stats = {}
+                for card in st.session_state.cards.values():
+                    tense = card.tense
+                    if tense not in tense_stats:
+                        tense_stats[tense] = {
+                            'total': 0,
+                            'reviews': 0,
+                            'correct': 0
+                        }
+                    
+                    tense_stats[tense]['total'] += 1
+                    tense_stats[tense]['reviews'] += card.total_reviews
+                    tense_stats[tense]['correct'] += card.correct_reviews
+                
+                tense_names = {
+                    'presente': 'Presente',
+                    'indefinido': 'Pretérito Indefinido',
+                    'subjuntivo': 'Subjuntivo',
+                    'imperfecto': 'Imperfecto'
+                }
+                
+                for tense, stats in tense_stats.items():
+                    tense_name = tense_names.get(tense, tense)
+                    accuracy = (stats['correct'] / stats['reviews'] * 100) if stats['reviews'] > 0 else 0
+                    st.write(f"**{tense_name}**: {stats['total']} карточек, {accuracy:.1f}% точность")
+        
         st.markdown("---")
+        
+        # Информация о хранении данных
         st.subheader("💾 Хранение данных")
         st.info("ℹ️ Данные сохраняются в рамках сессии браузера")
         st.caption("Для постоянного сохранения планируется Google Auth")
         
         if st.button("💾 Google Auth (скоро)", type="secondary", disabled=True, key="google_auth_placeholder"):
             st.info("🚧 Функция Google авторизации находится в разработке")
+        
+        # Советы по изучению - в самом низу
+        if st.button("💡 Советы по эффективному изучению", key="study_tips", use_container_width=True):
+            st.session_state.show_tips = True
         
         # Кнопка сброса прогресса (внизу, менее заметная)
         st.markdown('<div class="reset-btn">', unsafe_allow_html=True)
