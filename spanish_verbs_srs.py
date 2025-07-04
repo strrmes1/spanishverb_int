@@ -95,37 +95,81 @@ st.markdown("""
     .btn-easy { background: #0abde3; color: white; }
     
     /* Стили для боковой панели */
-    .sidebar .sidebar-collapse-control {
-        background-color: #667eea !important;
+    .stSidebar > div > div > div > div {
+        padding-top: 1rem;
+    }
+    
+    /* Ярче кнопка сворачивания панели */
+    [data-testid="collapsedControl"] {
+        background: linear-gradient(135deg, #667eea, #764ba2) !important;
         color: white !important;
         border-radius: 50% !important;
         font-weight: bold !important;
-        font-size: 1.2rem !important;
+        font-size: 1.8rem !important;
+        width: 4rem !important;
+        height: 4rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border: 4px solid #ffffff !important;
+        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5) !important;
+        position: fixed !important;
+        z-index: 999 !important;
+        animation: pulse 2s infinite !important;
     }
     
-    .sidebar .sidebar-collapse-control:hover {
-        background-color: #5a67d8 !important;
-        transform: scale(1.1) !important;
+    [data-testid="collapsedControl"]:hover {
+        background: linear-gradient(135deg, #5a67d8, #6b46c1) !important;
+        transform: scale(1.15) !important;
+        box-shadow: 0 8px 30px rgba(102, 126, 234, 0.7) !important;
+        animation: none !important;
     }
     
-    /* Ярким кнопки применить */
-    .apply-settings-btn {
+    @keyframes pulse {
+        0% { box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5); }
+        50% { box-shadow: 0 6px 25px rgba(102, 126, 234, 0.8); }
+        100% { box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5); }
+    }
+    
+    /* Более заметные вкладки */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.5rem;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 3rem;
+        padding: 0.5rem 2rem;
+        font-size: 1.2rem;
+        font-weight: bold;
+        border-radius: 25px;
+        border: 2px solid #e2e8f0;
+        background: white;
+        color: #4a5568;
+    }
+    
+    .stTabs [aria-selected="true"] {
         background: linear-gradient(135deg, #667eea, #764ba2) !important;
         color: white !important;
-        border: none !important;
-        padding: 0.75rem 2rem !important;
-        border-radius: 25px !important;
-        font-weight: bold !important;
-        font-size: 1.1rem !important;
-        margin: 1rem 0 !important;
-        width: 100% !important;
+        border-color: #667eea !important;
     }
     
-    .apply-settings-btn:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important;
+    /* Стили для карточки */
+    .card-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        text-align: center;
+        margin: 1rem 0;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
     }
     
+    .card-container.revealed {
+        background: linear-gradient(135deg, #48ca8b 0%, #2dd4bf 100%);
+        transform: scale(1.02);
+        box-shadow: 0 12px 40px rgba(72, 202, 139, 0.3);
+    }
     /* Менее заметная кнопка сброса */
     .reset-btn {
         background: #f7fafc !important;
@@ -455,6 +499,14 @@ def init_session_state():
     
     if 'show_tips' not in st.session_state:
         st.session_state.show_tips = False
+    
+    # Флаг для отслеживания первого запуска
+    if 'first_time' not in st.session_state:
+        st.session_state.first_time = True
+    
+    # Флаг для отслеживания изменений настроек
+    if 'settings_changed' not in st.session_state:
+        st.session_state.settings_changed = False
 
 def get_card_key(verb: str, pronoun_index: int, tense: str) -> str:
     """Генерирует уникальный ключ для карточки"""
@@ -708,15 +760,45 @@ def show_statistics():
             df['date'] = pd.to_datetime(df['date'])
             daily_reviews = df.groupby(df['date'].dt.date).size().reset_index()
             daily_reviews.columns = ['Дата', 'Повторений']
+            daily_reviews['Дата'] = daily_reviews['Дата'].astype(str)
             
             if PLOTLY_AVAILABLE:
                 fig = px.bar(daily_reviews, x='Дата', y='Повторений', 
                             title='Количество повторений по дням')
-                st.plotly_chart(fig, use_container_width=True)
+                
+                # Упрощаем график - убираем лишние элементы управления
+                fig.update_layout(
+                    showlegend=False,
+                    xaxis=dict(
+                        title="Дата",
+                        showgrid=True,
+                        fixedrange=True  # Отключаем зум по X
+                    ),
+                    yaxis=dict(
+                        title="Количество повторений",
+                        showgrid=True,
+                        fixedrange=True  # Отключаем зум по Y
+                    ),
+                    dragmode=False,  # Отключаем драг
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)'
+                )
+                
+                # Убираем тулбар и делаем график статичным
+                config = {
+                    'displayModeBar': False,
+                    'staticPlot': False,
+                    'scrollZoom': False,
+                    'doubleClick': False,
+                    'showTips': False,
+                    'displaylogo': False
+                }
+                
+                st.plotly_chart(fig, use_container_width=True, config=config)
             else:
                 # Простая таблица вместо графика
-                st.dataframe(daily_reviews, use_container_width=True)
-                st.caption("📊 График активности (установите plotly для полной визуализации)")
+                st.dataframe(daily_reviews, use_container_width=True, hide_index=True)
+                st.caption("📊 Для графика установите plotly: pip install plotly")
     
     # Статистика по временам
     st.subheader("⏰ Статистика по временам")
@@ -758,9 +840,12 @@ def apply_settings():
     """Применяет настройки и сохраняет их"""
     if st.session_state.settings.get('auto_save', True):
         DataManager.save_to_local_storage()
-    st.success("✅ Настройки применены!")
+    
     # Сбрасываем текущую карточку чтобы обновить в соответствии с новыми настройками
     st.session_state.current_card = None
+    st.session_state.is_revealed = False
+    
+    st.success("✅ Настройки применены и сохранены!")
     if not st.session_state.cards:
         st.info("Пока нет данных для статистики. Начните изучение!")
         return
@@ -900,30 +985,33 @@ def main():
             'imperfecto': 'Pretérito Imperfecto'
         }
         
-        # Сохраняем старые настройки для сравнения
-        old_tenses = st.session_state.settings['selected_tenses'].copy()
-        old_new_cards = st.session_state.settings['new_cards_per_day']
-        old_review_cards = st.session_state.settings['review_cards_per_day']
-        old_auto_save = st.session_state.settings.get('auto_save', True)
+        # Сохраняем текущие настройки для сравнения
+        current_settings = {
+            'selected_tenses': st.session_state.settings['selected_tenses'].copy(),
+            'new_cards_per_day': st.session_state.settings['new_cards_per_day'],
+            'review_cards_per_day': st.session_state.settings['review_cards_per_day'],
+            'auto_save': st.session_state.settings.get('auto_save', True)
+        }
         
-        selected_tenses = []
+        # Временные переменные для новых настроек
+        new_selected_tenses = []
         for tense_key, tense_name in tense_options.items():
             if st.checkbox(tense_name, value=tense_key in st.session_state.settings['selected_tenses'], key=f"tense_{tense_key}"):
-                selected_tenses.append(tense_key)
+                new_selected_tenses.append(tense_key)
         
-        st.session_state.settings['selected_tenses'] = selected_tenses or ['presente']
+        new_selected_tenses = new_selected_tenses or ['presente']
         
         # Настройки лимитов
         st.subheader("🎯 Дневные лимиты")
-        st.session_state.settings['new_cards_per_day'] = st.slider(
+        new_new_cards = st.slider(
             "Новых карточек в день", 1, 50, st.session_state.settings['new_cards_per_day'], key="new_cards_slider"
         )
-        st.session_state.settings['review_cards_per_day'] = st.slider(
+        new_review_cards = st.slider(
             "Повторений в день", 10, 200, st.session_state.settings['review_cards_per_day'], key="review_cards_slider"
         )
         
         # Автосохранение
-        st.session_state.settings['auto_save'] = st.checkbox(
+        new_auto_save = st.checkbox(
             "🔄 Автосохранение", 
             value=st.session_state.settings.get('auto_save', True),
             help="Автоматически сохранять прогресс в браузере",
@@ -932,19 +1020,23 @@ def main():
         
         # Проверяем, изменились ли настройки
         settings_changed = (
-            old_tenses != st.session_state.settings['selected_tenses'] or
-            old_new_cards != st.session_state.settings['new_cards_per_day'] or
-            old_review_cards != st.session_state.settings['review_cards_per_day'] or
-            old_auto_save != st.session_state.settings['auto_save']
+            current_settings['selected_tenses'] != new_selected_tenses or
+            current_settings['new_cards_per_day'] != new_new_cards or
+            current_settings['review_cards_per_day'] != new_review_cards or
+            current_settings['auto_save'] != new_auto_save
         )
         
         # Кнопка применить (показывается только если настройки изменились)
         if settings_changed:
-            st.markdown('<div class="apply-settings-btn">', unsafe_allow_html=True)
-            if st.button("✅ Применить настройки", key="apply_settings", use_container_width=True):
+            if st.button("✅ Применить настройки", key="apply_settings", use_container_width=True, type="primary"):
+                # Применяем настройки
+                st.session_state.settings['selected_tenses'] = new_selected_tenses
+                st.session_state.settings['new_cards_per_day'] = new_new_cards
+                st.session_state.settings['review_cards_per_day'] = new_review_cards
+                st.session_state.settings['auto_save'] = new_auto_save
+                
                 apply_settings()
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown("---")
         
@@ -958,6 +1050,12 @@ def main():
             st.metric("Правильных", st.session_state.daily_stats['correct_today'])
             due_count = len(get_due_cards())
             st.metric("К повторению", due_count)
+        
+        # Общая точность
+        total_reviews = sum(card.total_reviews for card in st.session_state.cards.values())
+        total_correct = sum(card.correct_reviews for card in st.session_state.cards.values())
+        accuracy = (total_correct / total_reviews * 100) if total_reviews > 0 else 0
+        st.metric("🎯 Общая точность", f"{accuracy:.1f}%")
         
         # Информация о хранении данных
         st.markdown("---")
