@@ -1032,7 +1032,7 @@ def main():
             conjugation = CONJUGATIONS[card.tense][card.verb][card.pronoun_index]
             
             st.markdown(f"""
-            <div class="{card_class}">
+            <div class="card-container revealed">
                 <div class="verb-title">{card.verb}</div>
                 <div class="verb-translation">{verb_info['translation']}</div>
                 <div style="font-size: 1rem; opacity: 0.8; margin-bottom: 1rem;">
