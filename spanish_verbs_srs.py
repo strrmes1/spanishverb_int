@@ -38,6 +38,19 @@ st.markdown("""
         text-align: center;
         margin: 1rem 0;
         box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .card-container:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 35px rgba(0,0,0,0.15);
+    }
+    
+    .card-container.revealed {
+        background: linear-gradient(135deg, #48ca8b 0%, #2dd4bf 100%);
+        transform: scale(1.02);
+        box-shadow: 0 12px 40px rgba(72, 202, 139, 0.3);
     }
     
     .verb-title {
@@ -131,59 +144,13 @@ st.markdown("""
         100% { box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5); }
     }
     
-    /* Более заметные вкладки */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 0.5rem;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        height: 3rem;
-        padding: 0.5rem 2rem;
-        font-size: 1.2rem;
-        font-weight: bold;
-        border-radius: 25px;
-        border: 2px solid #e2e8f0;
-        background: white;
-        color: #4a5568;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #667eea, #764ba2) !important;
-        color: white !important;
-        border-color: #667eea !important;
-    }
-    
-    /* Стили для карточки */
-    .card-container {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem;
-        border-radius: 1rem;
-        text-align: center;
-        margin: 1rem 0;
-        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .card-container:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 12px 35px rgba(0,0,0,0.15);
-    }
-    
-    .card-container.revealed {
-        background: linear-gradient(135deg, #48ca8b 0%, #2dd4bf 100%);
-        transform: scale(1.02);
-        box-shadow: 0 12px 40px rgba(72, 202, 139, 0.3);
-    }
-    
     /* Контейнер для основного контента */
     .main-content {
-        max-width: 600px;
+        max-width: 500px;
         margin: 0 auto;
         padding: 0 1rem;
     }
+    
     /* Менее заметная кнопка сброса */
     .reset-btn {
         background: #f7fafc !important;
@@ -193,6 +160,54 @@ st.markdown("""
         border-radius: 15px !important;
         font-size: 0.85rem !important;
         margin-top: 2rem !important;
+    }
+
+    /* Стили для правил */
+    .rules-section {
+        margin-top: 20px;
+    }
+    
+    .rules-toggle {
+        width: 100%;
+        padding: 15px;
+        background: #f7fafc;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        color: #4a5568;
+        transition: all 0.3s ease;
+    }
+    
+    .rules-toggle:hover {
+        background: #edf2f7;
+    }
+    
+    .rules-content {
+        background: #f7fafc;
+        border-radius: 0 0 10px 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .rules-content h3 {
+        color: #2d3748;
+        margin-bottom: 15px;
+        font-size: 1.2rem;
+    }
+    
+    .rules-content p {
+        line-height: 1.6;
+        margin-bottom: 10px;
+        color: #4a5568;
+    }
+    
+    .example {
+        background: rgba(102, 126, 234, 0.1);
+        padding: 10px;
+        border-radius: 8px;
+        margin: 10px 0;
+        font-family: monospace;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -222,7 +237,7 @@ class Card:
         if not self.next_review_date:
             self.next_review_date = datetime.date.today().isoformat()
 
-# Данные глаголов (те же что и раньше)
+# Данные глаголов
 VERBS = {
     'ser': {'translation': 'быть, являться', 'type': 'irregular'},
     'estar': {'translation': 'находиться, быть', 'type': 'irregular'},
@@ -386,6 +401,74 @@ CONJUGATIONS = {
         'sentir': ['sentía', 'sentías', 'sentía', 'sentíamos', 'sentíais', 'sentían'],
         'trabajar': ['trabajaba', 'trabajabas', 'trabajaba', 'trabajábamos', 'trabajabais', 'trabajaban'],
         'estudiar': ['estudiaba', 'estudiabas', 'estudiaba', 'estudiábamos', 'estudíabais', 'estudiaban']
+    }
+}
+
+RULES = {
+    'presente': {
+        'title': 'Настоящее время (Presente de Indicativo)',
+        'content': '''
+**Правильные глаголы -AR:**
+Основа + -o, -as, -a, -amos, -áis, -an
+*Пример: hablar → hablo, hablas, habla, hablamos, habláis, hablan*
+
+**Правильные глаголы -ER:**
+Основа + -o, -es, -e, -emos, -éis, -en
+*Пример: comer → como, comes, come, comemos, coméis, comen*
+
+**Правильные глаголы -IR:**
+Основа + -o, -es, -e, -imos, -ís, -en
+*Пример: vivir → vivo, vives, vive, vivimos, vivís, viven*
+
+**Неправильные глаголы** имеют особые формы спряжения, которые нужно запомнить.
+        '''
+    },
+    'indefinido': {
+        'title': 'Прошедшее время (Pretérito Indefinido)',
+        'content': '''
+**Правильные глаголы -AR:**
+Основа + -é, -aste, -ó, -amos, -asteis, -aron
+*Пример: hablar → hablé, hablaste, habló, hablamos, hablasteis, hablaron*
+
+**Правильные глаголы -ER/-IR:**
+Основа + -í, -iste, -ió, -imos, -isteis, -ieron
+*Пример: comer → comí, comiste, comió, comimos, comisteis, comieron*
+*Пример: vivir → viví, viviste, vivió, vivimos, vivisteis, vivieron*
+
+**Использование:** Завершенные действия в прошлом, конкретные моменты времени.
+        '''
+    },
+    'subjuntivo': {
+        'title': 'Сослагательное наклонение (Subjuntivo Presente)',
+        'content': '''
+**Глаголы -AR:**
+Основа + -e, -es, -e, -emos, -éis, -en
+*Пример: hablar → hable, hables, hable, hablemos, habléis, hablen*
+
+**Глаголы -ER/-IR:**
+Основа + -a, -as, -a, -amos, -áis, -an
+*Пример: comer → coma, comas, coma, comamos, comáis, coman*
+*Пример: vivir → viva, vivas, viva, vivamos, viváis, vivan*
+
+**Использование:** Сомнения, желания, эмоции, нереальные ситуации. Часто после que, cuando, si.
+        '''
+    },
+    'imperfecto': {
+        'title': 'Прошедшее несовершенное время (Pretérito Imperfecto)',
+        'content': '''
+**Глаголы -AR:**
+Основа + -aba, -abas, -aba, -ábamos, -abais, -aban
+*Пример: hablar → hablaba, hablabas, hablaba, hablábamos, hablabais, hablaban*
+
+**Глаголы -ER/-IR:**
+Основа + -ía, -ías, -ía, -íamos, -íais, -ían
+*Пример: comer → comía, comías, comía, comíamos, comíais, comían*
+*Пример: vivir → vivía, vivías, vivía, vivíamos, vivíais, vivían*
+
+**Исключения:** ser (era...), ir (iba...), ver (veía...)
+
+**Использование:** Повторяющиеся действия в прошлом, описания, привычки.
+        '''
     }
 }
 
@@ -715,118 +798,6 @@ def apply_settings():
     st.session_state.is_revealed = False
     
     st.success("✅ Настройки применены и сохранены!")
-    if not st.session_state.cards:
-        st.info("Пока нет данных для статистики. Начните изучение!")
-        return
-    
-    st.header("📊 Детальная статистика")
-    
-    # Общая статистика
-    total_cards = len(st.session_state.cards)
-    total_reviews = sum(card.total_reviews for card in st.session_state.cards.values())
-    total_correct = sum(card.correct_reviews for card in st.session_state.cards.values())
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("📚 Всего карточек", total_cards)
-    with col2:
-        st.metric("🔄 Всего повторений", total_reviews)
-    with col3:
-        accuracy = (total_correct / total_reviews * 100) if total_reviews > 0 else 0
-        st.metric("🎯 Точность", f"{accuracy:.1f}%")
-    with col4:
-        due_today = len(get_due_cards())
-        st.metric("⏰ К повторению", due_today)
-    
-    # Статистика по категориям карточек
-    st.subheader("📈 Распределение карточек")
-    
-    today = datetime.date.today().isoformat()
-    categories = {
-        'Новые': 0,
-        'Изучаемые': 0,
-        'Повторение': 0,
-        'Завершенные': 0
-    }
-    
-    for card in st.session_state.cards.values():
-        if card.total_reviews == 0:
-            categories['Новые'] += 1
-        elif card.repetitions < 5:
-            categories['Изучаемые'] += 1
-        elif card.next_review_date <= today:
-            categories['Повторение'] += 1
-        else:
-            categories['Завершенные'] += 1
-    
-    col1, col2, col3, col4 = st.columns(4)
-    cols = [col1, col2, col3, col4]
-    
-    for i, (category, count) in enumerate(categories.items()):
-        with cols[i]:
-            st.metric(category, count)
-    
-    # График прогресса по дням
-    if total_reviews > 0:
-        st.subheader("📅 Активность по времени")
-        
-        # Создаем данные для графика
-        review_dates = []
-        for card in st.session_state.cards.values():
-            if card.last_review_date:
-                review_dates.append(card.last_review_date)
-        
-        if review_dates:
-            df = pd.DataFrame({'date': review_dates})
-            df['date'] = pd.to_datetime(df['date'])
-            daily_reviews = df.groupby(df['date'].dt.date).size().reset_index()
-            daily_reviews.columns = ['Дата', 'Повторений']
-            
-            if PLOTLY_AVAILABLE:
-                fig = px.bar(daily_reviews, x='Дата', y='Повторений', 
-                            title='Количество повторений по дням')
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                # Простая таблица вместо графика
-                st.dataframe(daily_reviews, use_container_width=True)
-                st.caption("📊 График активности (установите plotly для полной визуализации)")
-    
-    # Статистика по временам
-    st.subheader("⏰ Статистика по временам")
-    
-    tense_stats = {}
-    for card in st.session_state.cards.values():
-        tense = card.tense
-        if tense not in tense_stats:
-            tense_stats[tense] = {
-                'total': 0,
-                'reviews': 0,
-                'correct': 0
-            }
-        
-        tense_stats[tense]['total'] += 1
-        tense_stats[tense]['reviews'] += card.total_reviews
-        tense_stats[tense]['correct'] += card.correct_reviews
-    
-    tense_names = {
-        'presente': 'Presente',
-        'indefinido': 'Pretérito Indefinido',
-        'subjuntivo': 'Subjuntivo',
-        'imperfecto': 'Imperfecto'
-    }
-    
-    for tense, stats in tense_stats.items():
-        tense_name = tense_names.get(tense, tense)
-        accuracy = (stats['correct'] / stats['reviews'] * 100) if stats['reviews'] > 0 else 0
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric(f"{tense_name} - Карточек", stats['total'])
-        with col2:
-            st.metric(f"{tense_name} - Повторений", stats['reviews'])
-        with col3:
-            st.metric(f"{tense_name} - Точность", f"{accuracy:.1f}%")
 
 def main():
     init_session_state()
@@ -988,10 +959,6 @@ def main():
         if st.button("💾 Google Auth (скоро)", type="secondary", disabled=True, key="google_auth_placeholder"):
             st.info("🚧 Функция Google авторизации находится в разработке")
         
-        # Советы по изучению - в самом низу
-        if st.button("💡 Советы по эффективному изучению", key="study_tips", use_container_width=True):
-            st.session_state.show_tips = True
-        
         # Кнопка сброса прогресса (внизу, менее заметная)
         st.markdown('<div class="reset-btn">', unsafe_allow_html=True)
         if st.button("🗑️ Сбросить прогресс", key="reset_progress", use_container_width=True):
@@ -1001,8 +968,7 @@ def main():
                 st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
     
-    # Основной интерфейс
-    # Проверяем, нужно ли показать советы
+    # Основной интерфейс - проверяем, нужно ли показать советы
     if st.session_state.get('show_tips', False):
         show_study_tips()
         if st.button("← Вернуться к изучению", type="primary"):
@@ -1010,9 +976,10 @@ def main():
             st.rerun()
         return
     
-    tab1, tab2 = st.tabs(["🎓 Изучение", "📊 Статистика"])
-    
-    with tab1:
+    # Создаем контейнер для основного контента с ограниченной шириной
+    with st.container():
+        st.markdown('<div class="main-content">', unsafe_allow_html=True)
+        
         # Получаем следующую карточку если нет текущей
         if not st.session_state.current_card:
             st.session_state.current_card = get_next_card()
@@ -1021,6 +988,7 @@ def main():
         if not st.session_state.current_card:
             st.success("🎉 Отлично! Вы завершили все запланированные повторения на сегодня!")
             st.info("Возвращайтесь завтра для новых карточек или измените настройки в боковой панели.")
+            st.markdown('</div>', unsafe_allow_html=True)
             return
         
         card = st.session_state.current_card
@@ -1036,33 +1004,22 @@ def main():
         
         verb_info = VERBS[card.verb]
         
-        # Отображаем карточку
-        st.markdown(f"""
-        <div class="card-container">
-            <div class="verb-title">{card.verb}</div>
-            <div class="verb-translation">{verb_info['translation']}</div>
-            <div style="font-size: 1rem; opacity: 0.8; margin-bottom: 1rem;">
-                {card.tense.title()}
-            </div>
-            <div class="pronoun-display">
-                {PRONOUNS[card.pronoun_index]}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Информация о карточке
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Повторений", card.total_reviews)
-        with col2:
-            accuracy = (card.correct_reviews / card.total_reviews * 100) if card.total_reviews > 0 else 0
-            st.metric("Точность", f"{accuracy:.0f}%")
-        with col3:
-            st.metric("Легкость", f"{card.easiness_factor:.1f}")
+        # Отображаем карточку с возможностью клика
+        card_class = "card-container revealed" if st.session_state.is_revealed else "card-container"
         
         if not st.session_state.is_revealed:
-            # Кнопка показа ответа
-            if st.button("🔍 Показать ответ", type="primary", use_container_width=True):
+            # Кнопка-карточка для показа ответа
+            if st.button(f"""
+            **{card.verb}**
+            
+            *{verb_info['translation']}*
+            
+            {card.tense.title()}
+            
+            **{PRONOUNS[card.pronoun_index]}**
+            
+            Нажмите, чтобы увидеть ответ
+            """, key="reveal_card", use_container_width=True, type="primary"):
                 st.session_state.is_revealed = True
                 st.rerun()
         else:
@@ -1070,8 +1027,18 @@ def main():
             conjugation = CONJUGATIONS[card.tense][card.verb][card.pronoun_index]
             
             st.markdown(f"""
-            <div class="answer-display">
-                ✅ {conjugation}
+            <div class="{card_class}">
+                <div class="verb-title">{card.verb}</div>
+                <div class="verb-translation">{verb_info['translation']}</div>
+                <div style="font-size: 1rem; opacity: 0.8; margin-bottom: 1rem;">
+                    {card.tense.title()}
+                </div>
+                <div class="pronoun-display">
+                    {PRONOUNS[card.pronoun_index]}
+                </div>
+                <div class="answer-display">
+                    ✅ {conjugation}
+                </div>
             </div>
             """, unsafe_allow_html=True)
             
@@ -1101,9 +1068,22 @@ def main():
                     st.rerun()
             
             st.caption("Выберите, насколько легко было вспомнить ответ. Это влияет на частоту повторения карточки.")
-    
-    with tab2:
-        show_statistics()
+        
+        # Правила спряжения для выбранных времен
+        st.markdown("---")
+        st.subheader("📚 Правила спряжения")
+        
+        for tense in st.session_state.settings['selected_tenses']:
+            if tense in RULES:
+                with st.expander(f"{RULES[tense]['title']}", expanded=False):
+                    st.markdown(RULES[tense]['content'])
+        
+        # Советы по изучению - в самом низу
+        if st.button("💡 Советы по эффективному изучению", key="study_tips", use_container_width=True):
+            st.session_state.show_tips = True
+            st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
