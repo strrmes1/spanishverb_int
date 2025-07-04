@@ -1005,21 +1005,26 @@ def main():
         verb_info = VERBS[card.verb]
         
         # Отображаем карточку с возможностью клика
-        card_class = "card-container revealed" if st.session_state.is_revealed else "card-container"
-        
         if not st.session_state.is_revealed:
-            # Кнопка-карточка для показа ответа
-            if st.button(f"""
-            **{card.verb}**
+            # Красивая HTML карточка для вопроса
+            st.markdown(f"""
+            <div class="card-container">
+                <div class="verb-title">{card.verb}</div>
+                <div class="verb-translation">{verb_info['translation']}</div>
+                <div style="font-size: 1rem; opacity: 0.8; margin-bottom: 1rem;">
+                    {card.tense.title()}
+                </div>
+                <div class="pronoun-display">
+                    {PRONOUNS[card.pronoun_index]}
+                </div>
+                <div style="font-size: 1.2rem; margin-top: 1rem; opacity: 0.8;">
+                    🔍 Нажмите, чтобы увидеть ответ
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
             
-            *{verb_info['translation']}*
-            
-            {card.tense.title()}
-            
-            **{PRONOUNS[card.pronoun_index]}**
-            
-            Нажмите, чтобы увидеть ответ
-            """, key="reveal_card", use_container_width=True, type="primary"):
+            # Невидимая кнопка для обработки клика
+            if st.button("🔍 Показать ответ", key="reveal_card", use_container_width=True):
                 st.session_state.is_revealed = True
                 st.rerun()
         else:
