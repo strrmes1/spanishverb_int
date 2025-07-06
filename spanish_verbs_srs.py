@@ -846,65 +846,136 @@ def process_answer(difficulty: Difficulty):
     st.session_state.current_card = None
     st.session_state.is_revealed = False
 
+# ЗАМЕНИТЕ ВАШУ ФУНКЦИЮ main() ПОЛНОСТЬЮ НА ЭТУ:
+
 def main():
     init_session_state()
     
-    # Обрабатываем OAuth callback - ДОБАВИТЬ ЭТИ СТРОКИ
+    # ОТЛАДКА: Показываем что происходит
     query_params = st.experimental_get_query_params()
     
-    if 'code' in query_params and 'state' in query_params:
-        st.info("🔄 Обрабатываем авторизацию...")
+    # Если есть query параметры, показываем их
+    if query_params:
+        st.write("🔍 **Отладка - получены параметры:**")
+        st.write(query_params)
         
-        code = query_params['code'][0]
-        state = query_params['state'][0]
-        
-        # Простая проверка state
-        stored_state = st.session_state.get('oauth_state')
-        if state == stored_state:
-            # Обмениваем code на токен
-            token_response = GoogleAuth.exchange_code_for_token(code)
+        # Проверяем есть ли code
+        if 'code' in query_params:
+            st.write("✅ Найден код авторизации!")
             
-            if token_response and 'access_token' in token_response:
-                access_token = token_response['access_token']
+            try:
+                code = query_params['code'][0]
+                state = query_params.get('state', [''])[0]
                 
-                # Получаем информацию о пользователе
-                user_info = GoogleAuth.get_user_info(access_token)
+                st.write(f"📝 Code: {code[:20]}...")
+                st.write(f"📝 State: {state[:20]}...")
                 
-                if user_info:
-                    # Сохраняем данные авторизации
-                    st.session_state.authenticated = True
-                    st.session_state.user_info = user_info
-                    st.session_state.access_token = access_token
-                    
-                    # Загружаем данные пользователя
-                    load_user_data()
-                    
-                    # Очищаем URL
+                # Проверяем переменные окружения
+                st.write("🔧 **Проверка конфигурации:**")
+                st.write(f"CLIENT_ID: {'✅ Настроен' if GOOGLE_CLIENT_ID else '❌ НЕ НАСТРОЕН'}")
+                st.write(f"CLIENT_SECRET: {'✅ Настроен' if GOOGLE_CLIENT_SECRET else '❌ НЕ НАСТРОЕН'}")
+                st.write(f"REDIRECT_URI: {REDIRECT_URI}")
+                
+                if st.button("🔄 Обработать авторизацию"):
+                    with st.spinner("Обрабатываем авторизацию..."):
+                        # Обмениваем code на токен
+                        st.write("1️⃣ Обмениваем code на токен...")
+                        
+                        data = {
+                            'client_id': GOOGLE_CLIENT_ID,
+                            'client_secret': GOOGLE_CLIENT_SECRET,
+                            'code': code,
+                            'grant_type': 'authorization_code',
+                            'redirect_uri': REDIRECT_URI,
+                        }
+                        
+                        try:
+                            response = requests.post(GOOGLE_TOKEN_URL, data=data)
+                            st.write(f"Token response status: {response.status_code}")
+                            
+                            if response.status_code == 200:
+                                token_data = response.json()
+                                st.write("✅ Токен получен!")
+                                
+                                access_token = token_data.get('access_token')
+                                if access_token:
+                                    st.write("2️⃣ Получаем информацию о пользователе...")
+                                    
+                                    # Получаем данные пользователя
+                                    headers = {'Authorization': f'Bearer {access_token}'}
+                                    user_response = requests.get(GOOGLE_USERINFO_URL, headers=headers)
+                                    
+                                    if user_response.status_code == 200:
+                                        user_info = user_response.json()
+                                        st.write("✅ Данные пользователя получены!")
+                                        st.write(f"👤 Имя: {user_info.get('name')}")
+                                        st.write(f"📧 Email: {user_info.get('email')}")
+                                        
+                                        # Сохраняем в session state
+                                        st.session_state.authenticated = True
+                                        st.session_state.user_info = user_info
+                                        st.session_state.access_token = access_token
+                                        
+                                        st.success("🎉 Авторизация успешна!")
+                                        
+                                        # Кнопка для перехода к приложению
+                                        if st.button("🚀 Перейти к приложению"):
+                                            st.experimental_set_query_params()  # Очищаем URL
+                                            st.rerun()
+                                    else:
+                                        st.error(f"❌ Ошибка получения пользователя: {user_response.status_code}")
+                                        st.write(user_response.text)
+                                else:
+                                    st.error("❌ Access token не найден в ответе")
+                                    st.write(token_data)
+                            else:
+                                st.error(f"❌ Ошибка получения токена: {response.status_code}")
+                                st.write(response.text)
+                                
+                        except Exception as e:
+                            st.error(f"❌ Исключение при обработке: {e}")
+                
+                # Кнопка для очистки URL
+                if st.button("🧹 Очистить URL и начать заново"):
                     st.experimental_set_query_params()
-                    
-                    st.success("✅ Успешная авторизация!")
-                    st.balloons()
-                    time.sleep(1)
                     st.rerun()
-                else:
-                    st.error("❌ Ошибка получения данных пользователя")
-            else:
-                st.error("❌ Ошибка получения токена")
+                    
+            except Exception as e:
+                st.error(f"❌ Ошибка обработки параметров: {e}")
         else:
-            st.error("❌ Ошибка безопасности")
-        
-        # Показываем кнопку возврата если что-то пошло не так
-        if st.button("🔄 Попробовать снова"):
+            st.write("❌ Код авторизации не найден в параметрах")
+            
+        # Всегда показываем кнопку возврата
+        st.markdown("---")
+        if st.button("🏠 Вернуться на главную"):
             st.experimental_set_query_params()
             st.rerun()
-        
-        return  # Не показываем основное приложение во время обработки callback
+            
+        return  # Не показываем основное приложение при отладке
     
+    # Обычная логика приложения
     # Если не авторизован, показываем страницу входа
     if not st.session_state.authenticated:
         show_auth_page()
         return
     
+    # Основное приложение для авторизованных пользователей
+    st.title("🇪🇸 Тренажер испанских глаголов")
+    st.caption("Система интервального повторения для эффективного изучения")
+    
+    # Простая проверка что авторизация работает
+    if st.session_state.user_info:
+        st.success(f"👋 Добро пожаловать, {st.session_state.user_info.get('name')}!")
+        
+        # Кнопка выхода для тестирования
+        if st.button("🚪 Выйти из аккаунта"):
+            st.session_state.authenticated = False
+            st.session_state.user_info = None
+            st.session_state.access_token = None
+            st.rerun()
+    
+    
+            
     # Основной интерфейс приложения
     st.title("🇪🇸 Тренажер испанских глаголов")
     st.caption("Система интервального повторения для эффективного изучения")
