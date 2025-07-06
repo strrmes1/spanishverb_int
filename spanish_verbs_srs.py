@@ -1,5 +1,6 @@
 import streamlit as st
 import random
+import time
 import json
 import datetime
 import math
@@ -32,7 +33,7 @@ st.set_page_config(
 # Google OAuth конфигурация
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
-REDIRECT_URI = os.getenv('REDIRECT_URI', 'https://your-app.railway.app/auth/callback')
+REDIRECT_URI = os.getenv('REDIRECT_URI', 'https://spanishverbint-production.up.railway.app/auth/callback')
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
@@ -848,11 +849,56 @@ def process_answer(difficulty: Difficulty):
 def main():
     init_session_state()
     
-    # Обрабатываем OAuth callback
-    if handle_oauth_callback():
-        st.success("✅ Успешная авторизация!")
-        st.balloons()
-        st.rerun()
+    # Обрабатываем OAuth callback - ДОБАВИТЬ ЭТИ СТРОКИ
+    query_params = st.experimental_get_query_params()
+    
+    if 'code' in query_params and 'state' in query_params:
+        st.info("🔄 Обрабатываем авторизацию...")
+        
+        code = query_params['code'][0]
+        state = query_params['state'][0]
+        
+        # Простая проверка state
+        stored_state = st.session_state.get('oauth_state')
+        if state == stored_state:
+            # Обмениваем code на токен
+            token_response = GoogleAuth.exchange_code_for_token(code)
+            
+            if token_response and 'access_token' in token_response:
+                access_token = token_response['access_token']
+                
+                # Получаем информацию о пользователе
+                user_info = GoogleAuth.get_user_info(access_token)
+                
+                if user_info:
+                    # Сохраняем данные авторизации
+                    st.session_state.authenticated = True
+                    st.session_state.user_info = user_info
+                    st.session_state.access_token = access_token
+                    
+                    # Загружаем данные пользователя
+                    load_user_data()
+                    
+                    # Очищаем URL
+                    st.experimental_set_query_params()
+                    
+                    st.success("✅ Успешная авторизация!")
+                    st.balloons()
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ Ошибка получения данных пользователя")
+            else:
+                st.error("❌ Ошибка получения токена")
+        else:
+            st.error("❌ Ошибка безопасности")
+        
+        # Показываем кнопку возврата если что-то пошло не так
+        if st.button("🔄 Попробовать снова"):
+            st.experimental_set_query_params()
+            st.rerun()
+        
+        return  # Не показываем основное приложение во время обработки callback
     
     # Если не авторизован, показываем страницу входа
     if not st.session_state.authenticated:
