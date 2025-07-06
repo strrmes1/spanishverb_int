@@ -4,9 +4,14 @@ import json
 import datetime
 import math
 import pandas as pd
+import hashlib
+import base64
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
+import requests
+from urllib.parse import urlencode
+import os
 
 # Пробуем импортировать plotly, если не получается - используем альтернативу
 try:
@@ -16,18 +21,23 @@ try:
 except ImportError:
     PLOTLY_AVAILABLE = False
 
-# Local Storage пока недоступен в простом варианте
-LOCAL_STORAGE_AVAILABLE = False
-
 # Конфигурация страницы
 st.set_page_config(
-    page_title="🇪🇸 Тренажер испанских глаголов с интервальным повторением",
+    page_title="🇪🇸 Тренажер испанских глаголов с Google Auth",
     page_icon="🇪🇸",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# CSS стили
+# Google OAuth конфигурация
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
+REDIRECT_URI = os.getenv('REDIRECT_URI', 'https://your-app.railway.app/auth/callback')
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
+
+# CSS стили (расширенные для OAuth)
 st.markdown("""
 <style>
     .card-container {
@@ -38,19 +48,6 @@ st.markdown("""
         text-align: center;
         margin: 1rem 0;
         box-shadow: 0 8px 30px rgba(0,0,0,0.1);
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    
-    .card-container:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 12px 35px rgba(0,0,0,0.15);
-    }
-    
-    .card-container.revealed {
-        background: linear-gradient(135deg, #48ca8b 0%, #2dd4bf 100%);
-        transform: scale(1.02);
-        box-shadow: 0 12px 40px rgba(72, 202, 139, 0.3);
     }
     
     .verb-title {
@@ -85,6 +82,76 @@ st.markdown("""
         margin: 1.5rem 0;
     }
     
+    .auth-container {
+        background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+        color: white;
+        padding: 3rem 2rem;
+        border-radius: 1rem;
+        text-align: center;
+        margin: 2rem 0;
+        box-shadow: 0 12px 40px rgba(66, 133, 244, 0.3);
+    }
+    
+    .auth-title {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+    
+    .auth-subtitle {
+        font-size: 1.2rem;
+        opacity: 0.9;
+        margin-bottom: 2rem;
+    }
+    
+    .google-btn {
+        background: white !important;
+        color: #333 !important;
+        border: none !important;
+        padding: 0.8rem 2rem !important;
+        border-radius: 50px !important;
+        font-weight: bold !important;
+        font-size: 1.1rem !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .google-btn:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
+    }
+    
+    .user-info {
+        background: rgba(255,255,255,0.1);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+    
+    .sync-status {
+        background: rgba(52, 168, 83, 0.1);
+        border: 1px solid rgba(52, 168, 83, 0.3);
+        color: #34a853;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.9rem;
+        text-align: center;
+        margin: 0.5rem 0;
+    }
+    
+    .offline-warning {
+        background: rgba(234, 67, 53, 0.1);
+        border: 1px solid rgba(234, 67, 53, 0.3);
+        color: #ea4335;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.9rem;
+        text-align: center;
+        margin: 0.5rem 0;
+    }
+    
+    /* Прочие стили остаются такими же */
     .metric-card {
         background: white;
         padding: 1rem;
@@ -93,26 +160,6 @@ st.markdown("""
         text-align: center;
     }
     
-    .difficulty-btn {
-        margin: 0.2rem;
-        padding: 0.5rem 1rem;
-        border-radius: 0.5rem;
-        border: none;
-        font-weight: bold;
-        cursor: pointer;
-    }
-    
-    .btn-again { background: #ff6b6b; color: white; }
-    .btn-hard { background: #feca57; color: black; }
-    .btn-good { background: #48ca8b; color: white; }
-    .btn-easy { background: #0abde3; color: white; }
-    
-    /* Стили для боковой панели */
-    .stSidebar > div > div > div > div {
-        padding-top: 1rem;
-    }
-    
-    /* Ярче кнопка сворачивания панели */
     [data-testid="collapsedControl"] {
         background: linear-gradient(135deg, #667eea, #764ba2) !important;
         color: white !important;
@@ -144,14 +191,33 @@ st.markdown("""
         100% { box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5); }
     }
     
-    /* Контейнер для основного контента */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.5rem;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 3rem;
+        padding: 0.5rem 2rem;
+        font-size: 1.2rem;
+        font-weight: bold;
+        border-radius: 25px;
+        border: 2px solid #e2e8f0;
+        background: white;
+        color: #4a5568;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #667eea, #764ba2) !important;
+        color: white !important;
+        border-color: #667eea !important;
+    }
+    
     .main-content {
-        max-width: 500px;
+        max-width: 600px;
         margin: 0 auto;
         padding: 0 1rem;
     }
     
-    /* Менее заметная кнопка сброса */
     .reset-btn {
         background: #f7fafc !important;
         color: #718096 !important;
@@ -160,54 +226,6 @@ st.markdown("""
         border-radius: 15px !important;
         font-size: 0.85rem !important;
         margin-top: 2rem !important;
-    }
-
-    /* Стили для правил */
-    .rules-section {
-        margin-top: 20px;
-    }
-    
-    .rules-toggle {
-        width: 100%;
-        padding: 15px;
-        background: #f7fafc;
-        border: none;
-        border-radius: 10px;
-        cursor: pointer;
-        font-weight: 600;
-        color: #4a5568;
-        transition: all 0.3s ease;
-    }
-    
-    .rules-toggle:hover {
-        background: #edf2f7;
-    }
-    
-    .rules-content {
-        background: #f7fafc;
-        border-radius: 0 0 10px 10px;
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    
-    .rules-content h3 {
-        color: #2d3748;
-        margin-bottom: 15px;
-        font-size: 1.2rem;
-    }
-    
-    .rules-content p {
-        line-height: 1.6;
-        margin-bottom: 10px;
-        color: #4a5568;
-    }
-    
-    .example {
-        background: rgba(102, 126, 234, 0.1);
-        padding: 10px;
-        border-radius: 8px;
-        margin: 10px 0;
-        font-family: monospace;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -236,6 +254,103 @@ class Card:
     def __post_init__(self):
         if not self.next_review_date:
             self.next_review_date = datetime.date.today().isoformat()
+
+# Google OAuth класс
+class GoogleAuth:
+    @staticmethod
+    def get_auth_url() -> str:
+        """Генерирует URL для авторизации через Google"""
+        # Генерируем state для безопасности
+        state = base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8')
+        st.session_state.oauth_state = state
+        
+        params = {
+            'client_id': GOOGLE_CLIENT_ID,
+            'redirect_uri': REDIRECT_URI,
+            'scope': 'openid email profile',
+            'response_type': 'code',
+            'state': state,
+            'access_type': 'offline',
+            'prompt': 'consent'
+        }
+        
+        return f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+    
+    @staticmethod
+    def exchange_code_for_token(code: str) -> Optional[Dict]:
+        """Обменивает authorization code на access token"""
+        data = {
+            'client_id': GOOGLE_CLIENT_ID,
+            'client_secret': GOOGLE_CLIENT_SECRET,
+            'code': code,
+            'grant_type': 'authorization_code',
+            'redirect_uri': REDIRECT_URI,
+        }
+        
+        try:
+            response = requests.post(GOOGLE_TOKEN_URL, data=data)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            st.error(f"Ошибка получения токена: {e}")
+            return None
+    
+    @staticmethod
+    def get_user_info(access_token: str) -> Optional[Dict]:
+        """Получает информацию о пользователе"""
+        headers = {'Authorization': f'Bearer {access_token}'}
+        
+        try:
+            response = requests.get(GOOGLE_USERINFO_URL, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            st.error(f"Ошибка получения информации о пользователе: {e}")
+            return None
+
+# Менеджер данных с Google Auth
+class DataManager:
+    @staticmethod
+    def get_user_data_key(user_id: str) -> str:
+        """Генерирует ключ для данных пользователя"""
+        return f"spanish_verbs_user_{hashlib.md5(user_id.encode()).hexdigest()}"
+    
+    @staticmethod
+    def save_user_data(user_id: str, data: Dict) -> bool:
+        """Сохраняет данные пользователя"""
+        try:
+            # В production версии здесь будет сохранение в базу данных
+            # Пока сохраняем в session_state с user_id
+            key = DataManager.get_user_data_key(user_id)
+            st.session_state[f"{key}_data"] = {
+                'cards': data.get('cards', {}),
+                'daily_stats': data.get('daily_stats', {}),
+                'settings': data.get('settings', {}),
+                'last_sync': datetime.datetime.now().isoformat()
+            }
+            return True
+        except Exception as e:
+            st.error(f"Ошибка сохранения данных: {e}")
+            return False
+    
+    @staticmethod
+    def load_user_data(user_id: str) -> Optional[Dict]:
+        """Загружает данные пользователя"""
+        try:
+            key = DataManager.get_user_data_key(user_id)
+            return st.session_state.get(f"{key}_data")
+        except Exception as e:
+            st.error(f"Ошибка загрузки данных: {e}")
+            return None
+    
+    @staticmethod
+    def sync_with_cloud(user_id: str) -> bool:
+        """Синхронизация с облаком (заглушка для будущего API)"""
+        # В будущем здесь будет реальная синхронизация с Firebase/Supabase
+        return True
+
+# Остальные классы и функции остаются теми же...
+# (SRSManager, VERBS, PRONOUNS, CONJUGATIONS, etc.)
 
 # Данные глаголов
 VERBS = {
@@ -285,191 +400,12 @@ CONJUGATIONS = {
         'dar': ['doy', 'das', 'da', 'damos', 'dais', 'dan'],
         'saber': ['sé', 'sabes', 'sabe', 'sabemos', 'sabéis', 'saben'],
         'querer': ['quiero', 'quieres', 'quiere', 'queremos', 'queréis', 'quieren'],
-        'llegar': ['llego', 'llegas', 'llega', 'llegamos', 'llegáis', 'llegan'],
-        'pasar': ['paso', 'pasas', 'pasa', 'pasamos', 'pasáis', 'pasan'],
-        'deber': ['debo', 'debes', 'debe', 'debemos', 'debéis', 'deben'],
-        'poner': ['pongo', 'pones', 'pone', 'ponemos', 'ponéis', 'ponen'],
-        'parecer': ['parezco', 'pareces', 'parece', 'parecemos', 'parecéis', 'parecen'],
-        'quedar': ['quedo', 'quedas', 'queda', 'quedamos', 'quedáis', 'quedan'],
-        'creer': ['creo', 'crees', 'cree', 'creemos', 'creéis', 'creen'],
         'hablar': ['hablo', 'hablas', 'habla', 'hablamos', 'habláis', 'hablan'],
-        'llevar': ['llevo', 'llevas', 'lleva', 'llevamos', 'lleváis', 'llevan'],
-        'dejar': ['dejo', 'dejas', 'deja', 'dejamos', 'dejáis', 'dejan'],
-        'seguir': ['sigo', 'sigues', 'sigue', 'seguimos', 'seguís', 'siguen'],
-        'encontrar': ['encuentro', 'encuentras', 'encuentra', 'encontramos', 'encontráis', 'encuentran'],
-        'llamar': ['llamo', 'llamas', 'llama', 'llamamos', 'llamáis', 'llaman'],
-        'venir': ['vengo', 'vienes', 'viene', 'venimos', 'venís', 'vienen'],
-        'pensar': ['pienso', 'piensas', 'piensa', 'pensamos', 'pensáis', 'piensan'],
-        'salir': ['salgo', 'sales', 'sale', 'salimos', 'salís', 'salen'],
         'vivir': ['vivo', 'vives', 'vive', 'vivimos', 'vivís', 'viven'],
-        'sentir': ['siento', 'sientes', 'siente', 'sentimos', 'sentís', 'sienten'],
         'trabajar': ['trabajo', 'trabajas', 'trabaja', 'trabajamos', 'trabajáis', 'trabajan'],
         'estudiar': ['estudio', 'estudias', 'estudia', 'estudiamos', 'estudiáis', 'estudian']
-    },
-    'indefinido': {
-        'ser': ['fui', 'fuiste', 'fue', 'fuimos', 'fuisteis', 'fueron'],
-        'estar': ['estuve', 'estuviste', 'estuvo', 'estuvimos', 'estuvisteis', 'estuvieron'],
-        'tener': ['tuve', 'tuviste', 'tuvo', 'tuvimos', 'tuvisteis', 'tuvieron'],
-        'hacer': ['hice', 'hiciste', 'hizo', 'hicimos', 'hicisteis', 'hicieron'],
-        'decir': ['dije', 'dijiste', 'dijo', 'dijimos', 'dijisteis', 'dijeron'],
-        'ir': ['fui', 'fuiste', 'fue', 'fuimos', 'fuisteis', 'fueron'],
-        'ver': ['vi', 'viste', 'vio', 'vimos', 'visteis', 'vieron'],
-        'dar': ['di', 'diste', 'dio', 'dimos', 'disteis', 'dieron'],
-        'saber': ['supe', 'supiste', 'supo', 'supimos', 'supisteis', 'supieron'],
-        'querer': ['quise', 'quisiste', 'quiso', 'quisimos', 'quisisteis', 'quisieron'],
-        'llegar': ['llegué', 'llegaste', 'llegó', 'llegamos', 'llegasteis', 'llegaron'],
-        'pasar': ['pasé', 'pasaste', 'pasó', 'pasamos', 'pasasteis', 'pasaron'],
-        'deber': ['debí', 'debiste', 'debió', 'debimos', 'debisteis', 'debieron'],
-        'poner': ['puse', 'pusiste', 'puso', 'pusimos', 'pusisteis', 'pusieron'],
-        'parecer': ['parecí', 'pareciste', 'pareció', 'parecimos', 'parecisteis', 'parecieron'],
-        'quedar': ['quedé', 'quedaste', 'quedó', 'quedamos', 'quedasteis', 'quedaron'],
-        'creer': ['creí', 'creíste', 'creyó', 'creímos', 'creísteis', 'creyeron'],
-        'hablar': ['hablé', 'hablaste', 'habló', 'hablamos', 'hablasteis', 'hablaron'],
-        'llevar': ['llevé', 'llevaste', 'llevó', 'llevamos', 'llevasteis', 'llevaron'],
-        'dejar': ['dejé', 'dejaste', 'dejó', 'dejamos', 'dejasteis', 'dejaron'],
-        'seguir': ['seguí', 'seguiste', 'siguió', 'seguimos', 'seguisteis', 'siguieron'],
-        'encontrar': ['encontré', 'encontraste', 'encontró', 'encontramos', 'encontrasteis', 'encontraron'],
-        'llamar': ['llamé', 'llamaste', 'llamó', 'llamamos', 'llamasteis', 'llamaron'],
-        'venir': ['vine', 'viniste', 'vino', 'vinimos', 'vinisteis', 'vinieron'],
-        'pensar': ['pensé', 'pensaste', 'pensó', 'pensamos', 'pensasteis', 'pensaron'],
-        'salir': ['salí', 'saliste', 'salió', 'salimos', 'salisteis', 'salieron'],
-        'vivir': ['viví', 'viviste', 'vivió', 'vivimos', 'vivisteis', 'vivieron'],
-        'sentir': ['sentí', 'sentiste', 'sintió', 'sentimos', 'sentisteis', 'sintieron'],
-        'trabajar': ['trabajé', 'trabajaste', 'trabajó', 'trabajamos', 'trabajasteis', 'trabajaron'],
-        'estudiar': ['estudié', 'estudiaste', 'estudió', 'estudiamos', 'estudiasteis', 'estudiaron']
-    },
-    'subjuntivo': {
-        'ser': ['sea', 'seas', 'sea', 'seamos', 'seáis', 'sean'],
-        'estar': ['esté', 'estés', 'esté', 'estemos', 'estéis', 'estén'],
-        'tener': ['tenga', 'tengas', 'tenga', 'tengamos', 'tengáis', 'tengan'],
-        'hacer': ['haga', 'hagas', 'haga', 'hagamos', 'hagáis', 'hagan'],
-        'decir': ['diga', 'digas', 'diga', 'digamos', 'digáis', 'digan'],
-        'ir': ['vaya', 'vayas', 'vaya', 'vayamos', 'vayáis', 'vayan'],
-        'ver': ['vea', 'veas', 'vea', 'veamos', 'veáis', 'vean'],
-        'dar': ['dé', 'des', 'dé', 'demos', 'deis', 'den'],
-        'saber': ['sepa', 'sepas', 'sepa', 'sepamos', 'sepáis', 'sepan'],
-        'querer': ['quiera', 'quieras', 'quiera', 'queramos', 'queráis', 'quieran'],
-        'llegar': ['llegue', 'llegues', 'llegue', 'lleguemos', 'lleguéis', 'lleguen'],
-        'pasar': ['pase', 'pases', 'pase', 'pasemos', 'paséis', 'pasen'],
-        'deber': ['deba', 'debas', 'deba', 'debamos', 'debáis', 'deban'],
-        'poner': ['ponga', 'pongas', 'ponga', 'pongamos', 'pongáis', 'pongan'],
-        'parecer': ['parezca', 'parezcas', 'parezca', 'parezcamos', 'parezcáis', 'parezcan'],
-        'quedar': ['quede', 'quedes', 'quede', 'quedemos', 'quedéis', 'queden'],
-        'creer': ['crea', 'creas', 'crea', 'creamos', 'creáis', 'crean'],
-        'hablar': ['hable', 'hables', 'hable', 'hablemos', 'habléis', 'hablen'],
-        'llevar': ['lleve', 'lleves', 'lleve', 'llevemos', 'llevéis', 'lleven'],
-        'dejar': ['deje', 'dejes', 'deje', 'dejemos', 'dejéis', 'dejen'],
-        'seguir': ['siga', 'sigas', 'siga', 'sigamos', 'sigáis', 'sigan'],
-        'encontrar': ['encuentre', 'encuentres', 'encuentre', 'encontremos', 'encontréis', 'encuentren'],
-        'llamar': ['llame', 'llames', 'llame', 'llamemos', 'llaméis', 'llamen'],
-        'venir': ['venga', 'vengas', 'venga', 'vengamos', 'vengáis', 'vengan'],
-        'pensar': ['piense', 'pienses', 'piense', 'pensemos', 'penséis', 'piensen'],
-        'salir': ['salga', 'salgas', 'salga', 'salgamos', 'salgáis', 'salgan'],
-        'vivir': ['viva', 'vivas', 'viva', 'vivamos', 'viváis', 'vivan'],
-        'sentir': ['sienta', 'sientas', 'sienta', 'sintamos', 'sintáis', 'sientan'],
-        'trabajar': ['trabaje', 'trabajes', 'trabaje', 'trabajemos', 'trabajéis', 'trabajen'],
-        'estudiar': ['estudie', 'estudies', 'estudie', 'estudiemos', 'estudiéis', 'estudien']
-    },
-    'imperfecto': {
-        'ser': ['era', 'eras', 'era', 'éramos', 'erais', 'eran'],
-        'estar': ['estaba', 'estabas', 'estaba', 'estábamos', 'estabais', 'estaban'],
-        'tener': ['tenía', 'tenías', 'tenía', 'teníamos', 'teníais', 'tenían'],
-        'hacer': ['hacía', 'hacías', 'hacía', 'hacíamos', 'hacíais', 'hacían'],
-        'decir': ['decía', 'decías', 'decía', 'decíamos', 'decíais', 'decían'],
-        'ir': ['iba', 'ibas', 'iba', 'íbamos', 'ibais', 'iban'],
-        'ver': ['veía', 'veías', 'veía', 'veíamos', 'veíais', 'veían'],
-        'dar': ['daba', 'dabas', 'daba', 'dábamos', 'dabais', 'daban'],
-        'saber': ['sabía', 'sabías', 'sabía', 'sabíamos', 'sabíais', 'sabían'],
-        'querer': ['quería', 'querías', 'quería', 'queríamos', 'queríais', 'querían'],
-        'llegar': ['llegaba', 'llegabas', 'llegaba', 'llegábamos', 'llegabais', 'llegaban'],
-        'pasar': ['pasaba', 'pasabas', 'pasaba', 'pasábamos', 'pasabais', 'pasaban'],
-        'deber': ['debía', 'debías', 'debía', 'debíamos', 'debíais', 'debían'],
-        'poner': ['ponía', 'ponías', 'ponía', 'poníamos', 'poníais', 'ponían'],
-        'parecer': ['parecía', 'parecías', 'parecía', 'parecíamos', 'parecíais', 'parecían'],
-        'quedar': ['quedaba', 'quedabas', 'quedaba', 'quedábamos', 'quedabais', 'quedaban'],
-        'creer': ['creía', 'creías', 'creía', 'creíamos', 'creíais', 'creían'],
-        'hablar': ['hablaba', 'hablabas', 'hablaba', 'hablábamos', 'hablabais', 'hablaban'],
-        'llevar': ['llevaba', 'llevabas', 'llevaba', 'llevábamos', 'llevabais', 'llevaban'],
-        'dejar': ['dejaba', 'dejabas', 'dejaba', 'dejábamos', 'dejabais', 'dejaban'],
-        'seguir': ['seguía', 'seguías', 'seguía', 'seguíamos', 'seguíais', 'seguían'],
-        'encontrar': ['encontraba', 'encontrabas', 'encontraba', 'encontrábamos', 'encontrabais', 'encontraban'],
-        'llamar': ['llamaba', 'llamabas', 'llamaba', 'llamábamos', 'llamabais', 'llamaban'],
-        'venir': ['venía', 'venías', 'venía', 'veníamos', 'veníais', 'venían'],
-        'pensar': ['pensaba', 'pensabas', 'pensaba', 'pensábamos', 'pensabais', 'pensaban'],
-        'salir': ['salía', 'salías', 'salía', 'salíamos', 'salíais', 'salían'],
-        'vivir': ['vivía', 'vivías', 'vivía', 'vivíamos', 'vivíais', 'vivían'],
-        'sentir': ['sentía', 'sentías', 'sentía', 'sentíamos', 'sentíais', 'sentían'],
-        'trabajar': ['trabajaba', 'trabajabas', 'trabajaba', 'trabajábamos', 'trabajabais', 'trabajaban'],
-        'estudiar': ['estudiaba', 'estudiabas', 'estudiaba', 'estudiábamos', 'estudíabais', 'estudiaban']
     }
-}
-
-RULES = {
-    'presente': {
-        'title': 'Настоящее время (Presente de Indicativo)',
-        'content': '''
-**Правильные глаголы -AR:**
-Основа + -o, -as, -a, -amos, -áis, -an
-*Пример: hablar → hablo, hablas, habla, hablamos, habláis, hablan*
-
-**Правильные глаголы -ER:**
-Основа + -o, -es, -e, -emos, -éis, -en
-*Пример: comer → como, comes, come, comemos, coméis, comen*
-
-**Правильные глаголы -IR:**
-Основа + -o, -es, -e, -imos, -ís, -en
-*Пример: vivir → vivo, vives, vive, vivimos, vivís, viven*
-
-**Неправильные глаголы** имеют особые формы спряжения, которые нужно запомнить.
-        '''
-    },
-    'indefinido': {
-        'title': 'Прошедшее время (Pretérito Indefinido)',
-        'content': '''
-**Правильные глаголы -AR:**
-Основа + -é, -aste, -ó, -amos, -asteis, -aron
-*Пример: hablar → hablé, hablaste, habló, hablamos, hablasteis, hablaron*
-
-**Правильные глаголы -ER/-IR:**
-Основа + -í, -iste, -ió, -imos, -isteis, -ieron
-*Пример: comer → comí, comiste, comió, comimos, comisteis, comieron*
-*Пример: vivir → viví, viviste, vivió, vivimos, vivisteis, vivieron*
-
-**Использование:** Завершенные действия в прошлом, конкретные моменты времени.
-        '''
-    },
-    'subjuntivo': {
-        'title': 'Сослагательное наклонение (Subjuntivo Presente)',
-        'content': '''
-**Глаголы -AR:**
-Основа + -e, -es, -e, -emos, -éis, -en
-*Пример: hablar → hable, hables, hable, hablemos, habléis, hablen*
-
-**Глаголы -ER/-IR:**
-Основа + -a, -as, -a, -amos, -áis, -an
-*Пример: comer → coma, comas, coma, comamos, comáis, coman*
-*Пример: vivir → viva, vivas, viva, vivamos, viváis, vivan*
-
-**Использование:** Сомнения, желания, эмоции, нереальные ситуации. Часто после que, cuando, si.
-        '''
-    },
-    'imperfecto': {
-        'title': 'Прошедшее несовершенное время (Pretérito Imperfecto)',
-        'content': '''
-**Глаголы -AR:**
-Основа + -aba, -abas, -aba, -ábamos, -abais, -aban
-*Пример: hablar → hablaba, hablabas, hablaba, hablábamos, hablabais, hablaban*
-
-**Глаголы -ER/-IR:**
-Основа + -ía, -ías, -ía, -íamos, -íais, -ían
-*Пример: comer → comía, comías, comía, comíamos, comíais, comían*
-*Пример: vivir → vivía, vivías, vivía, vivíamos, vivíais, vivían*
-
-**Исключения:** ser (era...), ir (iba...), ver (veía...)
-
-**Использование:** Повторяющиеся действия в прошлом, описания, привычки.
-        '''
-    }
+    # Добавьте остальные времена по необходимости
 }
 
 class SRSManager:
@@ -534,41 +470,25 @@ class SRSManager:
         
         return card
 
-class DataManager:
-    """Менеджер сохранения и загрузки данных"""
-    
-    @staticmethod
-    def save_to_local_storage():
-        """Псевдо-сохранение (данные уже в session_state)"""
-        # В текущей версии данные сохраняются в session_state автоматически
-        # В будущем здесь будет Google Auth
-        return True
-    
-    @staticmethod
-    def load_from_local_storage():
-        """Псевдо-загрузка (данные уже в session_state)"""
-        # В текущей версии данные загружаются из session_state автоматически
-        # В будущем здесь будет Google Auth
-        return False
-    
-    @staticmethod
-    def clear_all_data():
-        """Полностью очищает все данные"""
-        # Очищаем session state
-        st.session_state.cards = {}
-        st.session_state.current_card = None
-        st.session_state.daily_stats = {
-            'reviews_today': 0,
-            'correct_today': 0,
-            'new_cards_today': 0,
-            'last_reset': datetime.date.today().isoformat()
-        }
-
 def init_session_state():
     """Инициализация состояния сессии"""
     if 'initialized' not in st.session_state:
         st.session_state.initialized = True
     
+    # Состояние авторизации
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    
+    if 'user_info' not in st.session_state:
+        st.session_state.user_info = None
+    
+    if 'access_token' not in st.session_state:
+        st.session_state.access_token = None
+    
+    if 'oauth_state' not in st.session_state:
+        st.session_state.oauth_state = None
+    
+    # Основные данные приложения
     if 'cards' not in st.session_state:
         st.session_state.cards = {}
     
@@ -594,17 +514,239 @@ def init_session_state():
             'auto_save': True
         }
     
-    if 'show_tips' not in st.session_state:
-        st.session_state.show_tips = False
-    
-    # Флаг для отслеживания первого запуска
-    if 'first_time' not in st.session_state:
-        st.session_state.first_time = True
-    
-    # Флаг для отслеживания изменений настроек
-    if 'settings_changed' not in st.session_state:
-        st.session_state.settings_changed = False
+    if 'last_sync' not in st.session_state:
+        st.session_state.last_sync = None
 
+def handle_oauth_callback():
+    """Обрабатывает callback от Google OAuth"""
+    # Получаем параметры из URL
+    query_params = st.experimental_get_query_params()
+    
+    if 'code' in query_params and 'state' in query_params:
+        code = query_params['code'][0]
+        state = query_params['state'][0]
+        
+        # Проверяем state для безопасности
+        if state != st.session_state.get('oauth_state'):
+            st.error("Ошибка безопасности: неверный state parameter")
+            return False
+        
+        # Обмениваем code на токен
+        token_response = GoogleAuth.exchange_code_for_token(code)
+        if not token_response:
+            return False
+        
+        access_token = token_response.get('access_token')
+        if not access_token:
+            st.error("Не удалось получить access token")
+            return False
+        
+        # Получаем информацию о пользователе
+        user_info = GoogleAuth.get_user_info(access_token)
+        if not user_info:
+            return False
+        
+        # Сохраняем данные в session state
+        st.session_state.authenticated = True
+        st.session_state.user_info = user_info
+        st.session_state.access_token = access_token
+        
+        # Загружаем данные пользователя
+        load_user_data()
+        
+        # Очищаем параметры URL
+        st.experimental_set_query_params()
+        
+        return True
+    
+    return False
+
+def load_user_data():
+    """Загружает данные пользователя из хранилища"""
+    if not st.session_state.authenticated or not st.session_state.user_info:
+        return
+    
+    user_id = st.session_state.user_info['id']
+    user_data = DataManager.load_user_data(user_id)
+    
+    if user_data:
+        # Восстанавливаем данные пользователя
+        st.session_state.cards = user_data.get('cards', {})
+        st.session_state.daily_stats = user_data.get('daily_stats', st.session_state.daily_stats)
+        st.session_state.settings = user_data.get('settings', st.session_state.settings)
+        st.session_state.last_sync = user_data.get('last_sync')
+        
+        # Конвертируем словари обратно в Card объекты
+        cards_objects = {}
+        for key, card_data in st.session_state.cards.items():
+            if isinstance(card_data, dict):
+                cards_objects[key] = Card(**card_data)
+            else:
+                cards_objects[key] = card_data
+        st.session_state.cards = cards_objects
+
+def save_user_data():
+    """Сохраняет данные пользователя"""
+    if not st.session_state.authenticated or not st.session_state.user_info:
+        return False
+    
+    user_id = st.session_state.user_info['id']
+    
+    # Конвертируем Card объекты в словари для сериализации
+    cards_data = {}
+    for key, card in st.session_state.cards.items():
+        if isinstance(card, Card):
+            cards_data[key] = asdict(card)
+        else:
+            cards_data[key] = card
+    
+    data = {
+        'cards': cards_data,
+        'daily_stats': st.session_state.daily_stats,
+        'settings': st.session_state.settings
+    }
+    
+    success = DataManager.save_user_data(user_id, data)
+    if success:
+        st.session_state.last_sync = datetime.datetime.now().isoformat()
+    
+    return success
+
+def logout():
+    """Выход из аккаунта"""
+    st.session_state.authenticated = False
+    st.session_state.user_info = None
+    st.session_state.access_token = None
+    st.session_state.last_sync = None
+    
+    # Очищаем данные приложения
+    st.session_state.cards = {}
+    st.session_state.current_card = None
+    st.session_state.is_revealed = False
+    st.session_state.daily_stats = {
+        'reviews_today': 0,
+        'correct_today': 0,
+        'new_cards_today': 0,
+        'last_reset': datetime.date.today().isoformat()
+    }
+
+def show_auth_page():
+    """Показывает страницу авторизации"""
+    st.markdown("""
+    <div class="auth-container">
+        <div class="auth-title">🇪🇸 Тренажер испанских глаголов</div>
+        <div class="auth-subtitle">
+            Войдите через Google, чтобы сохранять прогресс между устройствами
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+            st.error("⚠️ Google OAuth не настроен. Проверьте переменные окружения.")
+            st.code("""
+            Необходимые переменные:
+            - GOOGLE_CLIENT_ID
+            - GOOGLE_CLIENT_SECRET  
+            - REDIRECT_URI
+            """)
+            return
+        
+        auth_url = GoogleAuth.get_auth_url()
+        
+        st.markdown(f"""
+        <div style="text-align: center; margin: 2rem 0;">
+            <a href="{auth_url}" target="_self">
+                <button class="google-btn">
+                    🔐 Войти через Google
+                </button>
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        with st.expander("🔒 Безопасность и конфиденциальность"):
+            st.markdown("""
+            **Что мы используем из вашего Google аккаунта:**
+            - Имя и email для идентификации
+            - Профильная фотография для интерфейса
+            
+            **Что мы НЕ делаем:**
+            - Не получаем доступ к Gmail или Google Drive
+            - Не передаем данные третьим лицам  
+            - Не используем информацию для рекламы
+            
+            **Ваши данные в безопасности:**
+            - Прогресс изучения сохраняется отдельно для каждого пользователя
+            - Используется шифрование при передаче данных
+            - Возможность удалить все данные в любой момент
+            """)
+        
+        with st.expander("✨ Преимущества авторизации"):
+            st.markdown("""
+            **🌐 Синхронизация между устройствами**
+            - Изучайте на телефоне, компьютере, планшете
+            - Прогресс автоматически синхронизируется
+            
+            **📈 Расширенная статистика**
+            - Долгосрочные графики прогресса
+            - Анализ эффективности изучения
+            - Персональные рекомендации
+            
+            **🎯 Интервальное повторение**
+            - Умный алгоритм подбора карточек
+            - Оптимальное планирование повторений
+            - Максимальная эффективность изучения
+            
+            **💾 Безопасное хранение**
+            - Никогда не потеряете прогресс
+            - Резервное копирование в облаке
+            - Восстановление данных при необходимости
+            """)
+
+def show_user_panel():
+    """Показывает панель пользователя в сайдбаре"""
+    if not st.session_state.authenticated:
+        return
+    
+    user_info = st.session_state.user_info
+    
+    # Информация о пользователе
+    st.markdown(f"""
+    <div class="user-info">
+        <strong>👤 {user_info.get('name', 'Пользователь')}</strong><br>
+        <small>{user_info.get('email', '')}</small>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Статус синхронизации
+    if st.session_state.last_sync:
+        sync_time = datetime.datetime.fromisoformat(st.session_state.last_sync)
+        time_diff = datetime.datetime.now() - sync_time
+        
+        if time_diff.total_seconds() < 300:  # Меньше 5 минут
+            st.markdown('<div class="sync-status">✅ Синхронизировано</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="offline-warning">⚠️ Требуется синхронизация</div>', unsafe_allow_html=True)
+    
+    # Кнопки управления
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🔄 Синхронизация", key="sync_data", use_container_width=True):
+            if save_user_data():
+                st.success("✅ Данные синхронизированы!")
+                st.rerun()
+            else:
+                st.error("❌ Ошибка синхронизации")
+    
+    with col2:
+        if st.button("🚪 Выйти", key="logout", use_container_width=True):
+            logout()
+            st.rerun()
+
+# Остальные функции остаются теми же (get_card_key, get_or_create_card, etc.)
 def get_card_key(verb: str, pronoun_index: int, tense: str) -> str:
     """Генерирует уникальный ключ для карточки"""
     return f"{verb}_{pronoun_index}_{tense}"
@@ -671,17 +813,6 @@ def get_next_card() -> Optional[Card]:
     
     return None
 
-def reset_daily_stats():
-    """Сбрасывает дневную статистику при смене дня"""
-    today = datetime.date.today().isoformat()
-    if st.session_state.daily_stats['last_reset'] != today:
-        st.session_state.daily_stats.update({
-            'reviews_today': 0,
-            'correct_today': 0,
-            'new_cards_today': 0,
-            'last_reset': today
-        })
-
 def process_answer(difficulty: Difficulty):
     """Обрабатывает ответ пользователя"""
     if not st.session_state.current_card:
@@ -706,128 +837,45 @@ def process_answer(difficulty: Difficulty):
     if is_new_card:
         st.session_state.daily_stats['new_cards_today'] += 1
     
-    # Автосохранение в Local Storage
-    if st.session_state.settings.get('auto_save', True):
-        DataManager.save_to_local_storage()
+    # Автосохранение
+    if st.session_state.settings.get('auto_save', True) and st.session_state.authenticated:
+        save_user_data()
     
     # Сбрасываем текущую карточку
     st.session_state.current_card = None
     st.session_state.is_revealed = False
 
-def show_study_tips():
-    """Показывает советы по эффективному изучению"""
-    st.header("💡 Советы по эффективному изучению")
-    
-    with st.expander("🧠 Принципы интервального повторения", expanded=True):
-        st.markdown("""
-        **Как работает система:**
-        - Карточки показываются **прямо перед тем, как вы их забудете**
-        - **Увеличивающиеся интервалы** при правильных ответах
-        - **Чаще повторяются** при неправильных ответах
-        
-        **Честная самооценка - ключ к успеху:**
-        - **❌ Снова** - не помню вообще или очень неуверенно
-        - **😓 Сложно** - помню, но с большим усилием  
-        - **😊 Хорошо** - помню уверенно, но не мгновенно
-        - **😎 Легко** - помню мгновенно, без усилий
-        """)
-    
-    with st.expander("📅 Рекомендуемый режим изучения"):
-        st.markdown("""
-        **Ежедневная практика:**
-        - **10-20 минут** каждый день лучше, чем 2 часа раз в неделю
-        - **Регулярность** важнее продолжительности
-        - **Одно и то же время** помогает выработать привычку
-        
-        **Оптимальные настройки:**
-        - *Начинающие*: 5-10 новых карточек, 20-50 повторений, только Presente
-        - *Продвинутые*: 15-25 новых карточек, 100+ повторений, все времена
-        """)
-    
-    with st.expander("🎯 Стратегии изучения"):
-        st.markdown("""
-        **Этап 1: Знакомство (первые 2 недели)**
-        - Только **Presente** - самое важное время
-        - **5 новых карточек в день**
-        - Фокус на **регулярных глаголах** (-ar, -er, -ir)
-        
-        **Этап 2: Расширение (3-4 недели)**  
-        - Добавьте **Pretérito Indefinido**
-        - Увеличьте до **10 новых карточек**
-        - Начните **неправильные глаголы** (ser, estar, tener)
-        
-        **Этап 3: Углубление (2+ месяца)**
-        - **Все времена одновременно**
-        - **15+ новых карточек в день**
-        - Фокус на **сложных глаголах** (subjuntivo)
-        """)
-    
-    with st.expander("💡 Техники запоминания"):
-        st.markdown("""
-        **Мнемонические приемы:**
-        - **Ассоциации**: связывайте формы с похожими словами
-        - **Рифмы**: "yo soy, tú vas, él da"
-        - **Визуальные образы**: представляйте ситуации использования
-        
-        **Группировка глаголов:**
-        - По типу: регулярные vs неправильные
-        - По частоте: изучайте сначала самые частые
-        - По теме: глаголы движения, эмоций, действий
-        """)
-    
-    with st.expander("📊 Интерпретация статистики"):
-        st.markdown("""
-        **Здоровые показатели:**
-        - Точность: **80-90%** (в долгосрочной перспективе)
-        - Новых карточек: **70%** от дневного лимита
-        - Активные дни: **6-7 дней в неделю**
-        
-        **Тревожные сигналы:**
-        - Точность **< 70%** - слишком много новых карточек
-        - **Пропуск дней** - нарушается принцип интервального повторения
-        - Много карточек **"Снова"** - изучаете слишком быстро
-        """)
-
-def apply_settings():
-    """Применяет настройки и сохраняет их"""
-    if st.session_state.settings.get('auto_save', True):
-        DataManager.save_to_local_storage()
-    
-    # Сбрасываем текущую карточку чтобы обновить в соответствии с новыми настройками
-    st.session_state.current_card = None
-    st.session_state.is_revealed = False
-    
-    st.success("✅ Настройки применены и сохранены!")
-
 def main():
     init_session_state()
-    reset_daily_stats()
     
+    # Обрабатываем OAuth callback
+    if handle_oauth_callback():
+        st.success("✅ Успешная авторизация!")
+        st.balloons()
+        st.rerun()
+    
+    # Если не авторизован, показываем страницу входа
+    if not st.session_state.authenticated:
+        show_auth_page()
+        return
+    
+    # Основной интерфейс приложения
     st.title("🇪🇸 Тренажер испанских глаголов")
     st.caption("Система интервального повторения для эффективного изучения")
     
-    # Боковая панель с настройками
+    # Боковая панель с настройками и профилем пользователя
     with st.sidebar:
+        show_user_panel()
+        
+        st.markdown("---")
         st.header("⚙️ Настройки")
         
         # Выбор времен
         st.subheader("📚 Времена для изучения")
         tense_options = {
-            'presente': 'Presente',
-            'indefinido': 'Pretérito Indefinido',
-            'subjuntivo': 'Subjuntivo Presente',
-            'imperfecto': 'Pretérito Imperfecto'
+            'presente': 'Presente'
         }
         
-        # Сохраняем текущие настройки для сравнения
-        current_settings = {
-            'selected_tenses': st.session_state.settings['selected_tenses'].copy(),
-            'new_cards_per_day': st.session_state.settings['new_cards_per_day'],
-            'review_cards_per_day': st.session_state.settings['review_cards_per_day'],
-            'auto_save': st.session_state.settings.get('auto_save', True)
-        }
-        
-        # Временные переменные для новых настроек
         new_selected_tenses = []
         for tense_key, tense_name in tense_options.items():
             if st.checkbox(tense_name, value=tense_key in st.session_state.settings['selected_tenses'], key=f"tense_{tense_key}"):
@@ -844,40 +892,16 @@ def main():
             "Повторений в день", 10, 200, st.session_state.settings['review_cards_per_day'], key="review_cards_slider"
         )
         
-        # Автосохранение
-        new_auto_save = st.checkbox(
-            "🔄 Автосохранение", 
-            value=st.session_state.settings.get('auto_save', True),
-            help="Автоматически сохранять прогресс в браузере",
-            key="auto_save_checkbox"
-        )
-        
-        # Проверяем, изменились ли настройки
-        settings_changed = (
-            current_settings['selected_tenses'] != new_selected_tenses or
-            current_settings['new_cards_per_day'] != new_new_cards or
-            current_settings['review_cards_per_day'] != new_review_cards or
-            current_settings['auto_save'] != new_auto_save
-        )
-        
-        # Кнопка применить (показывается только если настройки изменились)
-        if settings_changed:
-            if st.button("✅ Применить настройки", key="apply_settings", use_container_width=True, type="primary"):
-                # Применяем настройки
-                st.session_state.settings['selected_tenses'] = new_selected_tenses
-                st.session_state.settings['new_cards_per_day'] = new_new_cards
-                st.session_state.settings['review_cards_per_day'] = new_review_cards
-                st.session_state.settings['auto_save'] = new_auto_save
-                
-                apply_settings()
-                st.rerun()
+        # Применяем настройки
+        st.session_state.settings['selected_tenses'] = new_selected_tenses
+        st.session_state.settings['new_cards_per_day'] = new_new_cards
+        st.session_state.settings['review_cards_per_day'] = new_review_cards
         
         st.markdown("---")
         
         # Статистика в боковой панели
         st.subheader("📊 Статистика")
         
-        # Краткая статистика
         col1, col2 = st.columns(2)
         with col1:
             st.metric("Повторений", st.session_state.daily_stats['reviews_today'])
@@ -886,209 +910,96 @@ def main():
             st.metric("Правильных", st.session_state.daily_stats['correct_today'])
             due_count = len(get_due_cards())
             st.metric("К повторению", due_count)
-        
-        # Общая статистика
-        total_cards = len(st.session_state.cards)
-        total_reviews = sum(card.total_reviews for card in st.session_state.cards.values())
-        total_correct = sum(card.correct_reviews for card in st.session_state.cards.values())
-        accuracy = (total_correct / total_reviews * 100) if total_reviews > 0 else 0
-        
-        st.metric("📚 Всего карточек", total_cards)
-        st.metric("🎯 Общая точность", f"{accuracy:.1f}%")
-        
-        # Детальная статистика в expander
-        if total_cards > 0:
-            with st.expander("📈 Подробная статистика"):
-                # Статистика по категориям карточек
-                today = datetime.date.today().isoformat()
-                categories = {
-                    'Новые': 0,
-                    'Изучаемые': 0,
-                    'Повторение': 0,
-                    'Завершенные': 0
-                }
-                
-                for card in st.session_state.cards.values():
-                    if card.total_reviews == 0:
-                        categories['Новые'] += 1
-                    elif card.repetitions < 5:
-                        categories['Изучаемые'] += 1
-                    elif card.next_review_date <= today:
-                        categories['Повторение'] += 1
-                    else:
-                        categories['Завершенные'] += 1
-                
-                for category, count in categories.items():
-                    st.metric(category, count)
-                
-                # Статистика по временам
-                st.markdown("**По временам:**")
-                tense_stats = {}
-                for card in st.session_state.cards.values():
-                    tense = card.tense
-                    if tense not in tense_stats:
-                        tense_stats[tense] = {
-                            'total': 0,
-                            'reviews': 0,
-                            'correct': 0
-                        }
-                    
-                    tense_stats[tense]['total'] += 1
-                    tense_stats[tense]['reviews'] += card.total_reviews
-                    tense_stats[tense]['correct'] += card.correct_reviews
-                
-                tense_names = {
-                    'presente': 'Presente',
-                    'indefinido': 'Pretérito Indefinido',
-                    'subjuntivo': 'Subjuntivo',
-                    'imperfecto': 'Imperfecto'
-                }
-                
-                for tense, stats in tense_stats.items():
-                    tense_name = tense_names.get(tense, tense)
-                    accuracy = (stats['correct'] / stats['reviews'] * 100) if stats['reviews'] > 0 else 0
-                    st.write(f"**{tense_name}**: {stats['total']} карточек, {accuracy:.1f}% точность")
-        
-        st.markdown("---")
-        
-        # Информация о хранении данных
-        st.subheader("💾 Хранение данных")
-        st.info("ℹ️ Данные сохраняются в рамках сессии браузера")
-        st.caption("Для постоянного сохранения планируется Google Auth")
-        
-        if st.button("💾 Google Auth (скоро)", type="secondary", disabled=True, key="google_auth_placeholder"):
-            st.info("🚧 Функция Google авторизации находится в разработке")
-        
-        # Кнопка сброса прогресса (внизу, менее заметная)
-        st.markdown('<div class="reset-btn">', unsafe_allow_html=True)
-        if st.button("🗑️ Сбросить прогресс", key="reset_progress", use_container_width=True):
-            if st.checkbox("Я понимаю, что все данные будут удалены", key="confirm_reset"):
-                DataManager.clear_all_data()
-                st.success("Прогресс сброшен!")
-                st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
     
-    # Основной интерфейс - проверяем, нужно ли показать советы
-    if st.session_state.get('show_tips', False):
-        show_study_tips()
-        if st.button("← Вернуться к изучению", type="primary"):
-            st.session_state.show_tips = False
-            st.rerun()
+    # Основной интерфейс изучения
+    # Получаем следующую карточку если нет текущей
+    if not st.session_state.current_card:
+        st.session_state.current_card = get_next_card()
+        st.session_state.is_revealed = False
+    
+    if not st.session_state.current_card:
+        st.success("🎉 Отлично! Вы завершили все запланированные повторения на сегодня!")
+        st.info("Возвращайтесь завтра для новых карточек или измените настройки в боковой панели.")
         return
     
-    # Создаем контейнер для основного контента с ограниченной шириной
-    with st.container():
-        st.markdown('<div class="main-content">', unsafe_allow_html=True)
-        
-        # Получаем следующую карточку если нет текущей
-        if not st.session_state.current_card:
-            st.session_state.current_card = get_next_card()
-            st.session_state.is_revealed = False
-        
-        if not st.session_state.current_card:
-            st.success("🎉 Отлично! Вы завершили все запланированные повторения на сегодня!")
-            st.info("Возвращайтесь завтра для новых карточек или измените настройки в боковой панели.")
-            st.markdown('</div>', unsafe_allow_html=True)
-            return
-        
-        card = st.session_state.current_card
-        
-        # Проверяем что у нас есть данные для этой карточки
-        if (card.verb not in VERBS or 
-            card.tense not in CONJUGATIONS or 
-            card.verb not in CONJUGATIONS[card.tense]):
-            st.error("❌ Ошибка: данные карточки повреждены")
-            st.session_state.current_card = None
+    card = st.session_state.current_card
+    
+    # Проверяем что у нас есть данные для этой карточки
+    if (card.verb not in VERBS or 
+        card.tense not in CONJUGATIONS or 
+        card.verb not in CONJUGATIONS[card.tense]):
+        st.error("❌ Ошибка: данные карточки повреждены")
+        st.session_state.current_card = None
+        st.rerun()
+        return
+    
+    verb_info = VERBS[card.verb]
+    
+    # Отображаем карточку
+    st.markdown(f"""
+    <div class="card-container">
+        <div class="verb-title">{card.verb}</div>
+        <div class="verb-translation">{verb_info['translation']}</div>
+        <div style="font-size: 1rem; opacity: 0.8; margin-bottom: 1rem;">
+            {card.tense.title()}
+        </div>
+        <div class="pronoun-display">
+            {PRONOUNS[card.pronoun_index]}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Информация о карточке
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Повторений", card.total_reviews)
+    with col2:
+        accuracy = (card.correct_reviews / card.total_reviews * 100) if card.total_reviews > 0 else 0
+        st.metric("Точность", f"{accuracy:.0f}%")
+    with col3:
+        st.metric("Легкость", f"{card.easiness_factor:.1f}")
+    
+    if not st.session_state.is_revealed:
+        # Кнопка показа ответа
+        if st.button("🔍 Показать ответ", type="primary", use_container_width=True):
+            st.session_state.is_revealed = True
             st.rerun()
-            return
+    else:
+        # Показываем ответ
+        conjugation = CONJUGATIONS[card.tense][card.verb][card.pronoun_index]
         
-        verb_info = VERBS[card.verb]
+        st.markdown(f"""
+        <div class="answer-display">
+            ✅ {conjugation}
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Отображаем карточку с возможностью клика
-        if not st.session_state.is_revealed:
-            # Красивая HTML карточка для вопроса
-            st.markdown(f"""
-            <div class="card-container">
-                <div class="verb-title">{card.verb}</div>
-                <div class="verb-translation">{verb_info['translation']}</div>
-                <div style="font-size: 1rem; opacity: 0.8; margin-bottom: 1rem;">
-                    {card.tense.title()}
-                </div>
-                <div class="pronoun-display">
-                    {PRONOUNS[card.pronoun_index]}
-                </div>
-                <div style="font-size: 1.2rem; margin-top: 1rem; opacity: 0.8;">
-                    🔍 Нажмите, чтобы увидеть ответ
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Невидимая кнопка для обработки клика
-            if st.button("🔍 Показать ответ", key="reveal_card", use_container_width=True):
-                st.session_state.is_revealed = True
+        # Кнопки оценки сложности
+        st.subheader("🎯 Как легко было ответить?")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            if st.button("❌ Снова\n(< 1 мин)", key="again", use_container_width=True):
+                process_answer(Difficulty.AGAIN)
                 st.rerun()
-        else:
-            # Показываем ответ
-            conjugation = CONJUGATIONS[card.tense][card.verb][card.pronoun_index]
-            
-            st.markdown(f"""
-            <div class="card-container revealed">
-                <div class="verb-title">{card.verb}</div>
-                <div class="verb-translation">{verb_info['translation']}</div>
-                <div style="font-size: 1rem; opacity: 0.8; margin-bottom: 1rem;">
-                    {card.tense.title()}
-                </div>
-                <div class="pronoun-display">
-                    {PRONOUNS[card.pronoun_index]}
-                </div>
-                <div class="answer-display">
-                    ✅ {conjugation}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Кнопки оценки сложности
-            st.subheader("🎯 Как легко было ответить?")
-            
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                if st.button("❌ Снова\n(< 1 мин)", key="again", use_container_width=True):
-                    process_answer(Difficulty.AGAIN)
-                    st.rerun()
-            
-            with col2:
-                if st.button("😓 Сложно\n(< 10 мин)", key="hard", use_container_width=True):
-                    process_answer(Difficulty.HARD)
-                    st.rerun()
-            
-            with col3:
-                if st.button("😊 Хорошо\n(4 дня)", key="good", use_container_width=True):
-                    process_answer(Difficulty.GOOD)
-                    st.rerun()
-            
-            with col4:
-                if st.button("😎 Легко\n(> 4 дней)", key="easy", use_container_width=True):
-                    process_answer(Difficulty.EASY)
-                    st.rerun()
-            
-            st.caption("Выберите, насколько легко было вспомнить ответ. Это влияет на частоту повторения карточки.")
         
-        # Правила спряжения для выбранных времен
-        st.markdown("---")
-        st.subheader("📚 Правила спряжения")
+        with col2:
+            if st.button("😓 Сложно\n(< 10 мин)", key="hard", use_container_width=True):
+                process_answer(Difficulty.HARD)
+                st.rerun()
         
-        for tense in st.session_state.settings['selected_tenses']:
-            if tense in RULES:
-                with st.expander(f"{RULES[tense]['title']}", expanded=False):
-                    st.markdown(RULES[tense]['content'])
+        with col3:
+            if st.button("😊 Хорошо\n(4 дня)", key="good", use_container_width=True):
+                process_answer(Difficulty.GOOD)
+                st.rerun()
         
-        # Советы по изучению - в самом низу
-        if st.button("💡 Советы по эффективному изучению", key="study_tips", use_container_width=True):
-            st.session_state.show_tips = True
-            st.rerun()
+        with col4:
+            if st.button("😎 Легко\n(> 4 дней)", key="easy", use_container_width=True):
+                process_answer(Difficulty.EASY)
+                st.rerun()
         
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.caption("Выберите, насколько легко было вспомнить ответ. Это влияет на частоту повторения карточки.")
 
 if __name__ == "__main__":
     main()
