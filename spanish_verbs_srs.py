@@ -1,280 +1,161 @@
 import streamlit as st
 import os
-import requests
-from urllib.parse import urlencode
-import base64
 
-# Конфигурация
-st.set_page_config(page_title="🇪🇸 Debug OAuth", page_icon="🇪🇸")
-
-# OAuth настройки
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
-GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
-REDIRECT_URI = os.getenv('REDIRECT_URI', '')
-GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/auth"
-GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
+# Минимальный тест Railway routing
+st.set_page_config(page_title="🔧 Railway Test", page_icon="🔧")
 
 def main():
-    st.title("🔍 OAuth Debug Tool - Fixed Version")
+    st.title("🔧 Railway Routing Test")
     
-    # Инициализация session state
-    if 'oauth_state' not in st.session_state:
-        st.session_state.oauth_state = None
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
-    if 'user_info' not in st.session_state:
-        st.session_state.user_info = None
+    # Тест 1: Базовая работа Streamlit
+    st.success("✅ Streamlit работает на Railway!")
     
-    # ОТЛАДКА: показываем что происходит
-    st.write("### 🔧 Диагностика")
+    # Тест 2: Query параметры
+    st.markdown("## 📋 Query Parameters Test")
     
-    # Получаем query parameters ТОЛЬКО новым способом
     try:
-        # Конвертируем в обычный словарь для удобства
-        query_params = {}
-        for key in st.query_params:
-            query_params[key] = st.query_params[key]
+        params = dict(st.query_params)
+        if params:
+            st.success(f"✅ Query параметры найдены: {params}")
+        else:
+            st.info("ℹ️ Query параметры отсутствуют")
         
-        st.write("**Query Parameters (новый API):**")
-        st.json(query_params)
-        
-        # Показываем как raw значения
-        st.write("**Raw query_params объект:**")
-        st.write(f"Тип: {type(st.query_params)}")
-        st.write(f"Ключи: {list(st.query_params.keys())}")
+        st.write(f"**Количество параметров:** {len(params)}")
+        st.write(f"**Тип объекта:** {type(st.query_params)}")
         
     except Exception as e:
-        st.error(f"Ошибка с query_params: {e}")
-        query_params = {}
+        st.error(f"❌ Ошибка query_params: {e}")
     
-    # Показываем URL через JavaScript
-    st.markdown("""
-    <div style="background: #f0f0f0; padding: 15px; border-radius: 8px; margin: 10px 0;">
-        <strong>Текущий URL:</strong> <span id="current-url">Loading...</span><br>
-        <strong>Search параметры:</strong> <span id="search-params">Loading...</span>
+    # Тест 3: Создаем тестовые ссылки
+    st.markdown("## 🔗 Тестовые ссылки")
+    
+    base_url = "https://spanishverbint-production.up.railway.app"
+    
+    test_links = [
+        f"{base_url}?test=simple",
+        f"{base_url}?code=test_code&state=test_state",
+        f"{base_url}?param1=value1&param2=value2",
+        f"{base_url}/auth/callback?code=fake_code&state=fake_state"
+    ]
+    
+    st.write("**Нажмите на ссылки для тестирования routing:**")
+    
+    for i, link in enumerate(test_links, 1):
+        st.markdown(f"**Тест {i}:** [Открыть]({link})")
+        st.code(link)
+    
+    # Тест 4: JavaScript URL тест
+    st.markdown("## 🌐 JavaScript URL Test")
+    
+    st.components.v1.html("""
+    <div style="padding: 20px; background: #f0f8ff; border-radius: 10px; margin: 10px 0;">
+        <h4>🔍 JavaScript URL диагностика:</h4>
+        <p><strong>Full URL:</strong> <span id="js-url">Loading...</span></p>
+        <p><strong>Search:</strong> <span id="js-search">Loading...</span></p>
+        <p><strong>Parameters:</strong></p>
+        <pre id="js-params" style="background: white; padding: 10px; border-radius: 5px;">Loading...</pre>
+        
+        <button onclick="testURL()" style="margin-top: 10px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            🔄 Refresh URL Info
+        </button>
     </div>
     
     <script>
-    document.getElementById('current-url').textContent = window.location.href;
-    document.getElementById('search-params').textContent = window.location.search || '(нет параметров)';
-    console.log('Current URL:', window.location.href);
-    console.log('Search params:', window.location.search);
+    function updateURLInfo() {
+        try {
+            const url = window.location.href;
+            const search = window.location.search;
+            
+            document.getElementById('js-url').textContent = url;
+            document.getElementById('js-search').textContent = search || '(empty)';
+            
+            // Parse parameters
+            const params = new URLSearchParams(search);
+            const paramsObj = {};
+            for (const [key, value] of params) {
+                paramsObj[key] = value;
+            }
+            
+            document.getElementById('js-params').textContent = JSON.stringify(paramsObj, null, 2);
+            
+            console.log('URL Info Update:', { url, search, params: paramsObj });
+            
+        } catch (error) {
+            console.error('Error updating URL info:', error);
+            document.getElementById('js-url').textContent = 'Error: ' + error.message;
+        }
+    }
+    
+    function testURL() {
+        updateURLInfo();
+        alert('URL info updated! Check console for details.');
+    }
+    
+    // Auto-update on load
+    updateURLInfo();
+    
+    // Update every 2 seconds
+    setInterval(updateURLInfo, 2000);
     </script>
-    """, unsafe_allow_html=True)
+    """, height=250)
     
-    # Проверяем переменные окружения
-    st.write("**Environment Variables:**")
-    st.write(f"GOOGLE_CLIENT_ID: {'✅ Set' if GOOGLE_CLIENT_ID else '❌ Missing'}")
-    st.write(f"GOOGLE_CLIENT_SECRET: {'✅ Set' if GOOGLE_CLIENT_SECRET else '❌ Missing'}")
-    st.write(f"REDIRECT_URI: {REDIRECT_URI}")
+    # Тест 5: Environment variables
+    st.markdown("## 🔧 Environment Test")
     
-    # Проверяем session state
-    st.write("**Session State:**")
-    st.write(f"oauth_state: {st.session_state.oauth_state}")
-    st.write(f"authenticated: {st.session_state.authenticated}")
-    if st.session_state.user_info:
-        st.write(f"user_info: {st.session_state.user_info.get('name', 'Unknown')}")
+    st.write("**OAuth Variables:**")
+    oauth_vars = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'REDIRECT_URI']
     
-    # ОСНОВНАЯ ЛОГИКА
+    for var in oauth_vars:
+        value = os.getenv(var, '')
+        status = "✅ Set" if value else "❌ Missing"
+        length = f"({len(value)} chars)" if value else ""
+        st.write(f"**{var}:** {status} {length}")
     
-    # Проверяем наличие кода авторизации
-    if 'code' in query_params:
-        st.success("🎉 Найден authorization code!")
-        
-        code = query_params['code']
-        state = query_params.get('state', '')
-        
-        st.write(f"**Code:** {code[:30]}...")
-        st.write(f"**State:** {state[:30]}...")
-        st.write(f"**Stored state:** {st.session_state.oauth_state[:30] if st.session_state.oauth_state else 'None'}...")
-        
-        # Автоматическая обработка или кнопка
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("🔄 Обработать авторизацию", type="primary"):
-                process_oauth_code(code, state)
-        
-        with col2:
-            if st.button("🧹 Очистить URL"):
-                clear_query_params()
-                st.rerun()
+    # Тест 6: Ручная навигация
+    st.markdown("## 🎯 Ручное тестирование")
     
-    elif st.session_state.authenticated and st.session_state.user_info:
-        st.success("✅ Вы успешно авторизованы!")
-        
-        user_info = st.session_state.user_info
-        st.write(f"**Имя:** {user_info.get('name')}")
-        st.write(f"**Email:** {user_info.get('email')}")
-        st.write(f"**ID:** {user_info.get('id')}")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🚀 Перейти к приложению"):
-                # Здесь можно добавить переход к основному приложению
-                st.info("Переход к основному приложению...")
-        
-        with col2:
-            if st.button("🚪 Выйти"):
-                logout()
-                st.rerun()
+    st.write("**Инструкции:**")
+    st.write("1. Скопируйте один из тестовых URL выше")
+    st.write("2. Вставьте в новую вкладку браузера")
+    st.write("3. Посмотрите, показываются ли параметры в JavaScript разделе")
+    st.write("4. Проверьте, видит ли их Streamlit вверху страницы")
     
-    else:
-        st.info("👤 Необходима авторизация")
-        
-        if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
-            if st.button("🔐 Войти через Google", type="primary"):
-                auth_url = generate_auth_url()
-                st.write(f"Генерируем redirect на: {auth_url}")
-                
-                # Redirect через JavaScript
-                st.markdown(f"""
-                <script>
-                window.location.href = '{auth_url}';
-                </script>
-                """, unsafe_allow_html=True)
-                
-                st.info("Перенаправляем на Google...")
-        else:
-            st.error("❌ OAuth переменные не настроены")
-    
-    # Дополнительные кнопки управления
+    # Кнопки управления
     st.markdown("---")
-    st.write("### 🛠️ Управление")
-    
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("🔄 Обновить страницу"):
+        if st.button("🔄 Reload Page"):
             st.rerun()
     
     with col2:
-        if st.button("🧹 Очистить всё"):
-            clear_query_params()
-            logout()
-            st.rerun()
+        if st.button("🧹 Clear Params"):
+            try:
+                st.query_params.clear()
+                st.success("Parameters cleared!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Clear failed: {e}")
     
     with col3:
-        if st.button("📋 Показать session"):
+        if st.button("📊 Show Session"):
             st.json(dict(st.session_state))
-
-def generate_auth_url():
-    """Генерирует URL для авторизации"""
-    state = base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8')
-    st.session_state.oauth_state = state
     
-    params = {
-        'client_id': GOOGLE_CLIENT_ID,
-        'redirect_uri': REDIRECT_URI,
-        'scope': 'openid email profile',
-        'response_type': 'code',
-        'state': state,
-        'access_type': 'offline',
-        'prompt': 'consent'
-    }
+    # Результаты анализа
+    st.markdown("## 📊 Анализ результатов")
     
-    auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
-    st.write(f"Generated state: {state[:20]}...")
-    return auth_url
-
-def process_oauth_code(code, state):
-    """Обрабатывает OAuth код"""
-    st.write("### 🔄 Обработка авторизации...")
+    params = dict(st.query_params)
     
-    # Проверяем state
-    if state != st.session_state.oauth_state:
-        st.error(f"❌ State не совпадает!")
-        st.write(f"Получен: {state[:20]}...")
-        st.write(f"Ожидался: {st.session_state.oauth_state[:20] if st.session_state.oauth_state else 'None'}...")
-        return
-    
-    st.write("✅ State проверен")
-    
-    # Обмениваем код на токен
-    with st.spinner("Получаем токен..."):
-        token_response = exchange_code_for_token(code)
-        
-        if token_response and 'access_token' in token_response:
-            access_token = token_response['access_token']
-            st.write("✅ Токен получен!")
-            
-            # Получаем данные пользователя
-            with st.spinner("Получаем данные пользователя..."):
-                user_info = get_user_info(access_token)
-                
-                if user_info:
-                    st.write("✅ Данные пользователя получены!")
-                    
-                    # Сохраняем в session
-                    st.session_state.authenticated = True
-                    st.session_state.user_info = user_info
-                    
-                    st.success("🎉 Авторизация завершена успешно!")
-                    
-                    # Очищаем URL и перезагружаем
-                    clear_query_params()
-                    st.rerun()
-                else:
-                    st.error("❌ Ошибка получения данных пользователя")
-        else:
-            st.error("❌ Ошибка получения токена")
-
-def exchange_code_for_token(code):
-    """Обменивает код на токен"""
-    data = {
-        'client_id': GOOGLE_CLIENT_ID,
-        'client_secret': GOOGLE_CLIENT_SECRET,
-        'code': code,
-        'grant_type': 'authorization_code',
-        'redirect_uri': REDIRECT_URI,
-    }
-    
-    try:
-        response = requests.post(GOOGLE_TOKEN_URL, data=data, timeout=10)
-        st.write(f"Token response status: {response.status_code}")
-        
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.error(f"HTTP {response.status_code}: {response.text}")
-            return None
-            
-    except Exception as e:
-        st.error(f"Exception: {e}")
-        return None
-
-def get_user_info(access_token):
-    """Получает информацию о пользователе"""
-    headers = {'Authorization': f'Bearer {access_token}'}
-    
-    try:
-        response = requests.get(GOOGLE_USERINFO_URL, headers=headers, timeout=10)
-        st.write(f"User info response status: {response.status_code}")
-        
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.error(f"HTTP {response.status_code}: {response.text}")
-            return None
-            
-    except Exception as e:
-        st.error(f"Exception: {e}")
-        return None
-
-def clear_query_params():
-    """Очищает query параметры"""
-    try:
-        st.query_params.clear()
-        st.write("✅ Query параметры очищены")
-    except Exception as e:
-        st.error(f"Ошибка очистки параметров: {e}")
-
-def logout():
-    """Выход из системы"""
-    st.session_state.authenticated = False
-    st.session_state.user_info = None
-    st.session_state.oauth_state = None
+    if params:
+        st.success("🎉 Railway правильно передает query параметры в Streamlit!")
+        st.write("Проблема OAuth была в другом месте.")
+    else:
+        st.warning("⚠️ Query параметры не обнаружены")
+        st.write("Возможные причины:")
+        st.write("- URL не содержит параметры")
+        st.write("- Railway не передает параметры")
+        st.write("- Streamlit не может их прочитать")
+        st.write("- Проблема с routing/proxy")
 
 if __name__ == "__main__":
     main()
