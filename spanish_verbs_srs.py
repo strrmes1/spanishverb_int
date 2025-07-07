@@ -227,6 +227,7 @@ def show_welcome_page():
     with col2:
         if st.button("🔐 Войти через Google", type="primary", use_container_width=True):
             start_oauth_flow()
+            return  # Останавливаем выполнение чтобы показать OAuth интерфейс
         
         st.markdown("""
         <div style="text-align: center; margin-top: 2rem; color: #718096;">
@@ -256,18 +257,44 @@ def start_oauth_flow():
     
     auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
     
-    # Redirect через JavaScript
-    st.components.v1.html(f"""
-    <div style="text-align: center; padding: 2rem; background: #e3f2fd; border-radius: 1rem;">
-        <h3>🔄 Перенаправляем в Google...</h3>
-        <p>Подождите несколько секунд</p>
+    # Показываем прямую ссылку
+    st.success("🔐 OAuth готов к запуску!")
+    st.write(f"**Сгенерированный state:** {state[:20]}...")
+    
+    # Большая кнопка-ссылка
+    st.markdown(f"""
+    <div style="text-align: center; margin: 2rem 0;">
+        <a href="{auth_url}" target="_self" style="text-decoration: none;">
+            <button style="
+                background: linear-gradient(135deg, #4285f4, #34a853);
+                color: white;
+                padding: 1rem 3rem;
+                border: none;
+                border-radius: 50px;
+                font-size: 1.2rem;
+                font-weight: bold;
+                cursor: pointer;
+                box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
+                transition: all 0.3s ease;
+            " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                🔐 Открыть Google OAuth
+            </button>
+        </a>
     </div>
-    <script>
-    setTimeout(function() {{
-        window.location.href = '{auth_url}';
-    }}, 1500);
-    </script>
-    """, height=150)
+    """, unsafe_allow_html=True)
+    
+    st.info("""
+    **Инструкции:**
+    1. Нажмите кнопку выше
+    2. Откроется страница выбора Google аккаунта  
+    3. Выберите аккаунт и разрешите доступ
+    4. Вас автоматически вернет в приложение
+    """)
+    
+    # Также показываем ссылку для копирования
+    with st.expander("🔗 Альтернативно: скопируйте ссылку"):
+        st.code(auth_url)
+        st.caption("Скопируйте и откройте в новой вкладке если кнопка не работает")
 
 def show_main_app():
     """Показывает основное приложение"""
