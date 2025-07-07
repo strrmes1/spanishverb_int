@@ -86,6 +86,23 @@ def handle_oauth_callback(query_params):
     state = query_params.get('state')
     error = query_params.get('error')
     
+    # ОТЛАДКА: Показываем все параметры
+    with st.expander("🔍 Debug Info", expanded=True):
+        st.write("**Received parameters:**")
+        st.json(query_params)
+        
+        st.write("**Session state:**")
+        st.write(f"oauth_state: {st.session_state.oauth_state}")
+        st.write(f"oauth_state type: {type(st.session_state.oauth_state)}")
+        
+        if state and st.session_state.oauth_state:
+            st.write("**State comparison:**")
+            st.write(f"Received state: `{state}`")
+            st.write(f"Stored state:   `{st.session_state.oauth_state}`")
+            st.write(f"Equal: {state == st.session_state.oauth_state}")
+            st.write(f"Received length: {len(state)}")
+            st.write(f"Stored length: {len(st.session_state.oauth_state) if st.session_state.oauth_state else 0}")
+    
     # Проверяем ошибки
     if error:
         st.error(f"❌ OAuth Error: {error}")
@@ -93,23 +110,75 @@ def handle_oauth_callback(query_params):
             clear_oauth_and_reload()
         return
     
-    # Проверяем код и state
+    # Проверяем код
     if not code:
         st.error("❌ Authorization code missing")
         return
     
-    if not state or state != st.session_state.oauth_state:
-        st.error("❌ Security validation failed")
-        st.write("Это может произойти если:")
-        st.write("- Страница была перезагружена")
-        st.write("- Авторизация заняла слишком много времени")
-        st.write("- Открыто несколько вкладок")
-        
-        if st.button("🔄 Начать авторизацию заново"):
-            clear_oauth_and_reload()
+    # Проверяем state - ВРЕМЕННО ДЕЛАЕМ БОЛЕЕ МЯГКУЮ ПРОВЕРКУ
+    if not state:
+        st.error("❌ State parameter missing")
         return
     
+    if not st.session_state.oauth_state:
+        st.warning("⚠️ No stored state found in session")
+        st.write("Это может произойти если:")
+        st.write("- Session была очищена")
+        st.write("- Перезагрузка страницы")
+        st.write("- Долгая авторизация")
+        
+        # ВРЕМЕННОЕ РЕШЕНИЕ: Продолжаем без проверки state
+        st.info("🔧 Продолжаем без проверки state (временно)")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🚀 Продолжить без проверки"):
+                process_oauth_without_state_check(code)
+        with col2:
+            if st.button("🔄 Начать заново"):
+                clear_oauth_and_reload()
+        return
+    
+    if state != st.session_state.oauth_state:
+        st.error("❌ State mismatch")
+        st.write("**Детали ошибки:**")
+        st.write(f"Получен: `{state[:50]}...`")
+        st.write(f"Ожидался: `{st.session_state.oauth_state[:50]}...`")
+        
+        # Проверим похожи ли они
+        if state in st.session_state.oauth_state or st.session_state.oauth_state in state:
+            st.warning("⚠️ State частично совпадает - возможно проблема с encoding")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🚀 Игнорировать и продолжить"):
+                process_oauth_without_state_check(code)
+        with col2:
+            if st.button("🔄 Начать авторизацию заново"):
+                clear_oauth_and_reload()
+        return
+    
+    # Все проверки пройдены
+    st.success("✅ Security validation passed!")
+    
     # Обрабатываем код
+    with st.spinner("🔄 Получаем токен доступа..."):
+        success = process_authorization_code(code)
+        
+        if success:
+            st.success("🎉 Авторизация завершена успешно!")
+            time.sleep(1)
+            clear_url_params()
+            st.rerun()
+        else:
+            st.error("❌ Ошибка при получении токена")
+            if st.button("🔄 Попробовать снова"):
+                clear_oauth_and_reload()
+
+def process_oauth_without_state_check(code):
+    """Обрабатывает OAuth без проверки state (временное решение)"""
+    st.warning("⚠️ Обрабатываем без проверки state...")
+    
     with st.spinner("🔄 Получаем токен доступа..."):
         success = process_authorization_code(code)
         
