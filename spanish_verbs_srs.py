@@ -4,50 +4,62 @@ import requests
 from urllib.parse import urlencode
 import base64
 import datetime
+import time
 
 # Конфигурация
-st.set_page_config(page_title="🇪🇸 Spanish Verbs - OAuth Fixed", page_icon="🇪🇸")
+st.set_page_config(page_title="🇪🇸 Spanish Verbs Trainer", page_icon="🇪🇸", layout="wide")
 
-# OAuth настройки - ИЗМЕНЕНО для root path
+# OAuth настройки
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
-# Используем root path вместо /auth/callback
-ROOT_DOMAIN = "https://spanishverbint-production.up.railway.app"
-REDIRECT_URI = ROOT_DOMAIN  # Просто root, без /auth/callback
+REDIRECT_URI = os.getenv('REDIRECT_URI', 'https://spanishverbint-production.up.railway.app')
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
 
+# Данные для демо тренажера
+DEMO_VERBS = {
+    'ser': {'translation': 'быть, являться'},
+    'estar': {'translation': 'находиться, быть'},
+    'tener': {'translation': 'иметь'},
+    'hacer': {'translation': 'делать'},
+    'ir': {'translation': 'идти, ехать'},
+    'ver': {'translation': 'видеть'},
+    'dar': {'translation': 'давать'},
+    'saber': {'translation': 'знать'},
+    'querer': {'translation': 'хотеть, любить'},
+    'hablar': {'translation': 'говорить'},
+}
+
+DEMO_CONJUGATIONS = {
+    'ser': ['soy', 'eres', 'es', 'somos', 'sois', 'son'],
+    'estar': ['estoy', 'estás', 'está', 'estamos', 'estáis', 'están'],
+    'tener': ['tengo', 'tienes', 'tiene', 'tenemos', 'tenéis', 'tienen'],
+    'hacer': ['hago', 'haces', 'hace', 'hacemos', 'hacéis', 'hacen'],
+    'ir': ['voy', 'vas', 'va', 'vamos', 'vais', 'van'],
+    'ver': ['veo', 'ves', 've', 'vemos', 'veis', 'ven'],
+    'dar': ['doy', 'das', 'da', 'damos', 'dais', 'dan'],
+    'saber': ['sé', 'sabes', 'sabe', 'sabemos', 'sabéis', 'saben'],
+    'querer': ['quiero', 'quieres', 'quiere', 'queremos', 'queréis', 'quieren'],
+    'hablar': ['hablo', 'hablas', 'habla', 'hablamos', 'habláis', 'hablan'],
+}
+
+PRONOUNS = ['yo', 'tú', 'él/ella', 'nosotros', 'vosotros', 'ellos/ellas']
+
 def main():
-    st.title("🇪🇸 Тренажер испанских глаголов")
-    st.caption("OAuth исправлен - используем root path")
-    
     # Инициализация
     init_session_state()
     
-    # Диагностика
-    show_debug_info()
-    
-    # Получаем query параметры
+    # Обрабатываем OAuth callback
     query_params = dict(st.query_params)
     
-    # ОСНОВНАЯ ЛОГИКА
-    
-    # 1. Проверяем OAuth callback (теперь на root path)
     if 'code' in query_params and 'state' in query_params:
         handle_oauth_callback(query_params)
-    
-    # 2. Если уже авторизован
     elif st.session_state.authenticated:
         show_main_app()
-    
-    # 3. Показываем форму входа
     else:
-        show_login_form()
-    
-    # Показываем логи
-    show_event_log()
+        show_welcome_page()
 
 def init_session_state():
     """Инициализация session state"""
@@ -57,132 +69,85 @@ def init_session_state():
         st.session_state.authenticated = False
     if 'user_info' not in st.session_state:
         st.session_state.user_info = None
-    if 'event_log' not in st.session_state:
-        st.session_state.event_log = []
-
-def log_event(event, data=None):
-    """Логирует события"""
-    timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-    log_entry = {
-        "time": timestamp,
-        "event": event,
-        "data": data or {}
-    }
-    st.session_state.event_log.append(log_entry)
-    
-    if len(st.session_state.event_log) > 15:
-        st.session_state.event_log = st.session_state.event_log[-15:]
-
-def show_debug_info():
-    """Отладочная информация"""
-    with st.expander("🔍 Debug Info", expanded=False):
-        query_params = dict(st.query_params)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.write("**Query Params:**")
-            if query_params:
-                st.json(query_params)
-            else:
-                st.write("(empty)")
-        
-        with col2:
-            st.write("**OAuth Status:**")
-            st.write(f"authenticated: {st.session_state.authenticated}")
-            st.write(f"oauth_state: {bool(st.session_state.oauth_state)}")
-            st.write(f"REDIRECT_URI: {REDIRECT_URI}")
+    if 'current_verb' not in st.session_state:
+        st.session_state.current_verb = None
+    if 'current_pronoun' not in st.session_state:
+        st.session_state.current_pronoun = 0
+    if 'is_revealed' not in st.session_state:
+        st.session_state.is_revealed = False
+    if 'score' not in st.session_state:
+        st.session_state.score = {'correct': 0, 'total': 0}
 
 def handle_oauth_callback(query_params):
     """Обрабатывает OAuth callback"""
-    st.markdown("## 🔄 OAuth Callback (на root path)")
+    st.title("🔄 Обрабатываем авторизацию...")
     
     code = query_params.get('code')
     state = query_params.get('state')
     error = query_params.get('error')
     
-    log_event("oauth_callback_received", {
-        "has_code": bool(code),
-        "has_state": bool(state),
-        "has_error": bool(error),
-        "path": "root"
-    })
-    
     # Проверяем ошибки
     if error:
         st.error(f"❌ OAuth Error: {error}")
-        error_description = query_params.get('error_description', 'No description')
-        st.write(f"Description: {error_description}")
-        
-        if st.button("🔄 Try Again"):
-            clear_url_params()
-            st.rerun()
+        if st.button("🔄 Попробовать снова"):
+            clear_oauth_and_reload()
         return
     
-    # Проверяем код
+    # Проверяем код и state
     if not code:
         st.error("❌ Authorization code missing")
         return
     
-    # Проверяем state
     if not state or state != st.session_state.oauth_state:
-        st.error("❌ State mismatch")
-        st.write(f"Received: {state[:20] if state else 'None'}...")
-        st.write(f"Expected: {st.session_state.oauth_state[:20] if st.session_state.oauth_state else 'None'}...")
+        st.error("❌ Security validation failed")
+        st.write("Это может произойти если:")
+        st.write("- Страница была перезагружена")
+        st.write("- Авторизация заняла слишком много времени")
+        st.write("- Открыто несколько вкладок")
+        
+        if st.button("🔄 Начать авторизацию заново"):
+            clear_oauth_and_reload()
         return
     
-    # Все ОК
-    st.success("✅ OAuth callback validation passed!")
-    st.write(f"Code: {code[:30]}...")
-    st.write(f"State: {state[:20]}...")
-    
-    # Автоматически обрабатываем код
-    with st.spinner("Processing authorization..."):
+    # Обрабатываем код
+    with st.spinner("🔄 Получаем токен доступа..."):
         success = process_authorization_code(code)
         
         if success:
-            st.success("🎉 Authentication successful!")
-            # Очищаем URL и перезагружаем
+            st.success("🎉 Авторизация завершена успешно!")
+            time.sleep(1)
             clear_url_params()
-            time.sleep(1)  # Небольшая пауза
             st.rerun()
         else:
-            st.error("❌ Authentication failed")
+            st.error("❌ Ошибка при получении токена")
+            if st.button("🔄 Попробовать снова"):
+                clear_oauth_and_reload()
 
 def process_authorization_code(code):
     """Обрабатывает authorization code"""
     try:
-        # Получаем токен
+        # Обменяем код на токен
         token_data = exchange_code_for_token(code)
         if not token_data or 'access_token' not in token_data:
-            st.error("❌ Failed to get access token")
+            st.error("❌ Не удалось получить токен доступа")
             return False
         
         access_token = token_data['access_token']
-        st.success("✅ Access token received")
         
-        # Получаем пользователя
+        # Получаем информацию о пользователе
         user_info = get_user_info(access_token)
         if not user_info:
-            st.error("❌ Failed to get user info")
+            st.error("❌ Не удалось получить информацию о пользователе")
             return False
         
-        st.success("✅ User info received")
-        
-        # Сохраняем
+        # Сохраняем в session
         st.session_state.authenticated = True
         st.session_state.user_info = user_info
-        
-        log_event("authentication_successful", {
-            "user_email": user_info.get('email'),
-            "user_name": user_info.get('name')
-        })
         
         return True
         
     except Exception as e:
-        st.error(f"❌ Exception: {e}")
-        log_event("authentication_failed", {"error": str(e)})
+        st.error(f"❌ Ошибка: {e}")
         return False
 
 def exchange_code_for_token(code):
@@ -192,73 +157,96 @@ def exchange_code_for_token(code):
         'client_secret': GOOGLE_CLIENT_SECRET,
         'code': code,
         'grant_type': 'authorization_code',
-        'redirect_uri': REDIRECT_URI,  # Теперь это root path
+        'redirect_uri': REDIRECT_URI,
     }
     
-    try:
-        response = requests.post(GOOGLE_TOKEN_URL, data=data, timeout=10)
-        
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.error(f"Token request failed: {response.status_code}")
-            st.code(response.text)
-            return None
-            
-    except Exception as e:
-        st.error(f"Token request exception: {e}")
+    response = requests.post(GOOGLE_TOKEN_URL, data=data, timeout=10)
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"Token request failed: {response.status_code}")
         return None
 
 def get_user_info(access_token):
     """Получает информацию о пользователе"""
     headers = {'Authorization': f'Bearer {access_token}'}
+    response = requests.get(GOOGLE_USERINFO_URL, headers=headers, timeout=10)
     
-    try:
-        response = requests.get(GOOGLE_USERINFO_URL, headers=headers, timeout=10)
-        
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.error(f"User info request failed: {response.status_code}")
-            return None
-            
-    except Exception as e:
-        st.error(f"User info request exception: {e}")
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"User info request failed: {response.status_code}")
         return None
 
-def show_login_form():
-    """Показывает форму входа"""
-    st.markdown("## 🔐 Вход в систему")
+def show_welcome_page():
+    """Показывает страницу приветствия"""
+    # Красивый заголовок
+    st.markdown("""
+    <div style="text-align: center; padding: 3rem 0;">
+        <h1 style="font-size: 3.5rem; color: #2d3748; margin-bottom: 1rem;">
+            🇪🇸 Тренажер испанских глаголов
+        </h1>
+        <h3 style="color: #718096; font-weight: 400; margin-bottom: 2rem;">
+            Изучайте спряжения с системой интервального повторения
+        </h3>
+    </div>
+    """, unsafe_allow_html=True)
     
-    col1, col2 = st.columns([2, 1])
+    # Преимущества
+    col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.write("Войдите через Google для доступа к тренажеру:")
-        
-        if st.button("🔐 Войти через Google", type="primary"):
-            start_oauth_flow()
+        st.markdown("""
+        <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 1rem; margin: 1rem 0;">
+            <h3>🧠 Умное повторение</h3>
+            <p>Алгоритм показывает карточки именно тогда, когда вы готовы их забыть</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col2:
-        st.info("""
-        **OAuth исправлен!**
+        st.markdown("""
+        <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border-radius: 1rem; margin: 1rem 0;">
+            <h3>📊 Прогресс-трекинг</h3>
+            <p>Детальная статистика изучения и персональные рекомендации</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border-radius: 1rem; margin: 1rem 0;">
+            <h3>☁️ Облачная синхронизация</h3>
+            <p>Изучайте на любом устройстве, прогресс всегда с вами</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Кнопка входа
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("🔐 Войти через Google", type="primary", use_container_width=True):
+            start_oauth_flow()
         
-        Теперь используем root path 
-        для redirect вместо 
-        `/auth/callback`
-        """)
+        st.markdown("""
+        <div style="text-align: center; margin-top: 2rem; color: #718096;">
+            <small>
+                Нужен Google аккаунт для сохранения прогресса.<br>
+                Мы не получаем доступ к вашим личным данным.
+            </small>
+        </div>
+        """, unsafe_allow_html=True)
 
 def start_oauth_flow():
     """Запускает OAuth flow"""
-    # Генерируем state
+    # Генерируем новый state
     state = base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8')
     st.session_state.oauth_state = state
     
-    log_event("oauth_flow_started", {"state": state[:20]})
-    
-    # Параметры OAuth - REDIRECT_URI теперь root
+    # Параметры OAuth
     params = {
         'client_id': GOOGLE_CLIENT_ID,
-        'redirect_uri': REDIRECT_URI,  # Root path!
+        'redirect_uri': REDIRECT_URI,
         'scope': 'openid email profile',
         'response_type': 'code',
         'state': state,
@@ -268,78 +256,163 @@ def start_oauth_flow():
     
     auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
     
-    st.write(f"**Redirect URI:** {REDIRECT_URI}")
-    st.write(f"**State:** {state[:20]}...")
-    
     # Redirect через JavaScript
     st.components.v1.html(f"""
-    <script>
-    console.log('OAuth redirect to:', '{auth_url}');
-    window.location.href = '{auth_url}';
-    </script>
-    <div style="text-align: center; padding: 20px; background: #e3f2fd; border-radius: 10px;">
-        <h3>🔄 Redirecting to Google...</h3>
-        <p>State: {state[:20]}...</p>
-        <p>If redirect doesn't work, <a href="{auth_url}" target="_self">click here</a></p>
+    <div style="text-align: center; padding: 2rem; background: #e3f2fd; border-radius: 1rem;">
+        <h3>🔄 Перенаправляем в Google...</h3>
+        <p>Подождите несколько секунд</p>
     </div>
+    <script>
+    setTimeout(function() {{
+        window.location.href = '{auth_url}';
+    }}, 1500);
+    </script>
     """, height=150)
 
 def show_main_app():
     """Показывает основное приложение"""
-    st.markdown("## ✅ Авторизован!")
-    
     user_info = st.session_state.user_info
-    if user_info:
-        col1, col2 = st.columns([3, 1])
+    
+    # Верхняя панель
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        st.title("🇪🇸 Тренажер глаголов")
+        st.caption(f"Добро пожаловать, {user_info.get('name')}!")
+    
+    with col2:
+        st.metric("Правильных", st.session_state.score['correct'])
+    
+    with col3:
+        accuracy = (st.session_state.score['correct'] / st.session_state.score['total'] * 100) if st.session_state.score['total'] > 0 else 0
+        st.metric("Точность", f"{accuracy:.0f}%")
+    
+    # Боковая панель
+    with st.sidebar:
+        st.markdown(f"""
+        <div style="text-align: center; padding: 1rem; background: #f7fafc; border-radius: 0.5rem; margin-bottom: 1rem;">
+            <strong>👤 {user_info.get('name')}</strong><br>
+            <small>{user_info.get('email')}</small>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🚪 Выйти", use_container_width=True):
+            logout()
+            st.rerun()
+        
+        st.markdown("---")
+        st.subheader("📊 Статистика")
+        st.write(f"**Всего ответов:** {st.session_state.score['total']}")
+        st.write(f"**Правильных:** {st.session_state.score['correct']}")
+        
+        if st.session_state.score['total'] > 0:
+            accuracy = st.session_state.score['correct'] / st.session_state.score['total'] * 100
+            st.write(f"**Точность:** {accuracy:.1f}%")
+    
+    # Основной интерфейс тренажера
+    show_verb_trainer()
+
+def show_verb_trainer():
+    """Показывает интерфейс тренажера"""
+    import random
+    
+    # Получаем текущий глагол
+    if not st.session_state.current_verb:
+        st.session_state.current_verb = random.choice(list(DEMO_VERBS.keys()))
+        st.session_state.current_pronoun = random.randint(0, 5)
+        st.session_state.is_revealed = False
+    
+    verb = st.session_state.current_verb
+    pronoun_idx = st.session_state.current_pronoun
+    verb_info = DEMO_VERBS[verb]
+    
+    # Карточка глагола
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 3rem; border-radius: 1rem; text-align: center; margin: 2rem 0;">
+        <h1 style="font-size: 4rem; margin-bottom: 1rem;">{verb}</h1>
+        <h3 style="opacity: 0.9; margin-bottom: 2rem;">{verb_info['translation']}</h3>
+        <div style="font-size: 2.5rem; background: rgba(255,255,255,0.2); padding: 1rem 2rem; border-radius: 0.5rem; display: inline-block;">
+            {PRONOUNS[pronoun_idx]}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Кнопки управления
+    if not st.session_state.is_revealed:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🔍 Показать ответ", type="primary", use_container_width=True):
+                st.session_state.is_revealed = True
+                st.rerun()
+    else:
+        # Показываем ответ
+        conjugation = DEMO_CONJUGATIONS[verb][pronoun_idx]
+        
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #48ca8b 0%, #2dd4bf 100%); color: white; padding: 2rem; border-radius: 1rem; text-align: center; margin: 2rem 0;">
+            <h2 style="font-size: 3rem; margin: 0;">✅ {conjugation}</h2>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Кнопки оценки
+        st.subheader("🎯 Как хорошо вы знали ответ?")
+        
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.write(f"**Добро пожаловать, {user_info.get('name')}!**")
-            st.write(f"📧 {user_info.get('email')}")
-            
-            if user_info.get('picture'):
-                st.image(user_info['picture'], width=80)
+            if st.button("❌ Не знал", use_container_width=True, key="wrong"):
+                process_answer(False)
         
         with col2:
-            if st.button("🚪 Выйти"):
-                logout()
-                st.rerun()
+            if st.button("😐 Сложно", use_container_width=True, key="hard"):
+                process_answer(True)
+        
+        with col3:
+            if st.button("😊 Хорошо", use_container_width=True, key="good"):
+                process_answer(True)
+        
+        with col4:
+            if st.button("😎 Легко", use_container_width=True, key="easy"):
+                process_answer(True)
+
+def process_answer(correct):
+    """Обрабатывает ответ пользователя"""
+    st.session_state.score['total'] += 1
+    if correct:
+        st.session_state.score['correct'] += 1
     
-    # Простой интерфейс тренажера
-    st.markdown("---")
-    st.markdown("## 🇪🇸 Тренажер глаголов")
+    # Переходим к следующему глаголу
+    next_verb()
+
+def next_verb():
+    """Переход к следующему глаголу"""
+    import random
     
-    st.success("🎉 OAuth успешно работает!")
-    st.write("Теперь можно интегрировать полную функциональность тренажера.")
-    
-    # Демо функционал
-    if st.button("🎯 Начать изучение"):
-        st.balloons()
-        st.write("Здесь будет интерфейс изучения глаголов!")
+    st.session_state.current_verb = random.choice(list(DEMO_VERBS.keys()))
+    st.session_state.current_pronoun = random.randint(0, 5)
+    st.session_state.is_revealed = False
+    st.rerun()
 
 def clear_url_params():
     """Очищает URL параметры"""
     try:
         st.query_params.clear()
-        log_event("url_params_cleared")
-    except Exception as e:
-        log_event("url_params_clear_failed", {"error": str(e)})
+    except:
+        pass
+
+def clear_oauth_and_reload():
+    """Очищает OAuth состояние и перезагружает"""
+    st.session_state.oauth_state = None
+    clear_url_params()
+    st.rerun()
 
 def logout():
     """Выход из системы"""
-    log_event("user_logout")
     st.session_state.authenticated = False
     st.session_state.user_info = None
     st.session_state.oauth_state = None
-
-def show_event_log():
-    """Показывает лог событий"""
-    if st.session_state.event_log:
-        with st.expander("📋 Event Log", expanded=False):
-            for entry in reversed(st.session_state.event_log[-5:]):
-                st.write(f"**{entry['time']}** - {entry['event']}")
-                if entry['data']:
-                    st.json(entry['data'])
-                st.write("---")
+    st.session_state.current_verb = None
+    st.session_state.score = {'correct': 0, 'total': 0}
 
 if __name__ == "__main__":
     main()
