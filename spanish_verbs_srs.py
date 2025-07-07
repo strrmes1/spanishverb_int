@@ -3,217 +3,262 @@ import os
 import requests
 from urllib.parse import urlencode
 import base64
-import time
+import datetime
 
 # Конфигурация
-st.set_page_config(page_title="🔍 URL Debug", page_icon="🔍")
+st.set_page_config(page_title="🇪🇸 Spanish Verbs - OAuth Fixed", page_icon="🇪🇸")
 
-# OAuth настройки
+# OAuth настройки - ИЗМЕНЕНО для root path
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
-REDIRECT_URI = os.getenv('REDIRECT_URI', '')
+# Используем root path вместо /auth/callback
+ROOT_DOMAIN = "https://spanishverbint-production.up.railway.app"
+REDIRECT_URI = ROOT_DOMAIN  # Просто root, без /auth/callback
+
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
 
 def main():
-    st.title("🔍 URL Redirect Debug Tool")
+    st.title("🇪🇸 Тренажер испанских глаголов")
+    st.caption("OAuth исправлен - используем root path")
     
     # Инициализация
-    if 'oauth_state' not in st.session_state:
-        st.session_state.oauth_state = None
-    if 'url_history' not in st.session_state:
-        st.session_state.url_history = []
+    init_session_state()
     
-    # ПОСТОЯННЫЙ МОНИТОРИНГ URL
-    st.markdown("## 🌐 Постоянный URL мониторинг")
+    # Диагностика
+    show_debug_info()
     
-    # JavaScript который отслеживает ВСЕ изменения URL
-    url_monitor = st.components.v1.html("""
-    <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin: 20px 0;">
-        <h3>🔍 LIVE URL Monitor</h3>
-        <p><strong>Current URL:</strong> <span id="current-url">Loading...</span></p>
-        <p><strong>Search Params:</strong> <span id="search-params">Loading...</span></p>
-        <p><strong>Page Loads:</strong> <span id="load-count">0</span></p>
-        
-        <h4>📋 URL History:</h4>
-        <div id="url-history" style="background: white; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto;">
-            Loading...
-        </div>
-        
-        <button onclick="captureURL()" style="margin-top: 10px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
-            📸 Capture Current URL
-        </button>
-    </div>
-    
-    <script>
-    let loadCount = 0;
-    let urlHistory = [];
-    
-    function updateURL() {
-        loadCount++;
-        const url = window.location.href;
-        const search = window.location.search;
-        const timestamp = new Date().toLocaleTimeString();
-        
-        document.getElementById('current-url').textContent = url;
-        document.getElementById('search-params').textContent = search || '(empty)';
-        document.getElementById('load-count').textContent = loadCount;
-        
-        // Добавляем в историю если URL изменился
-        const lastURL = urlHistory.length > 0 ? urlHistory[urlHistory.length - 1].url : '';
-        if (url !== lastURL) {
-            urlHistory.push({
-                time: timestamp,
-                url: url,
-                search: search,
-                load: loadCount
-            });
-            
-            // Ограничиваем историю
-            if (urlHistory.length > 10) {
-                urlHistory = urlHistory.slice(-10);
-            }
-            
-            updateHistoryDisplay();
-        }
-        
-        // Логируем все в консоль
-        console.log(`[${timestamp}] URL: ${url}`);
-        if (search) {
-            console.log(`[${timestamp}] Search: ${search}`);
-            console.log(`[${timestamp}] Parsed:`, Object.fromEntries(new URLSearchParams(search)));
-        }
-    }
-    
-    function updateHistoryDisplay() {
-        const historyDiv = document.getElementById('url-history');
-        historyDiv.innerHTML = urlHistory.map(entry => 
-            `<div style="margin-bottom: 5px; padding: 5px; border-left: 3px solid #007bff;">
-                <strong>${entry.time}</strong> (Load #${entry.load})<br>
-                ${entry.url}<br>
-                <small>Search: ${entry.search || '(empty)'}</small>
-            </div>`
-        ).join('');
-    }
-    
-    function captureURL() {
-        updateURL();
-        alert('URL captured! Check history above.');
-    }
-    
-    // Обновляем при загрузке
-    updateURL();
-    
-    // Отслеживаем изменения URL
-    let lastURL = window.location.href;
-    setInterval(() => {
-        if (window.location.href !== lastURL) {
-            lastURL = window.location.href;
-            updateURL();
-        }
-    }, 500);
-    
-    // Отслеживаем события навигации
-    window.addEventListener('popstate', updateURL);
-    window.addEventListener('pushstate', updateURL);
-    window.addEventListener('replacestate', updateURL);
-    
-    // Обновляем каждые 2 секунды для надежности
-    setInterval(updateURL, 2000);
-    </script>
-    """, height=400)
-    
-    # STREAMLIT ДИАГНОСТИКА
-    st.markdown("## 📋 Streamlit Query Params")
-    
+    # Получаем query параметры
     query_params = dict(st.query_params)
     
-    if query_params:
-        st.success("✅ Streamlit видит параметры!")
-        st.json(query_params)
+    # ОСНОВНАЯ ЛОГИКА
+    
+    # 1. Проверяем OAuth callback (теперь на root path)
+    if 'code' in query_params and 'state' in query_params:
+        handle_oauth_callback(query_params)
+    
+    # 2. Если уже авторизован
+    elif st.session_state.authenticated:
+        show_main_app()
+    
+    # 3. Показываем форму входа
     else:
-        st.warning("⚠️ Streamlit не видит параметры")
+        show_login_form()
     
-    # ПРОВЕРКА REDIRECT_URI
-    st.markdown("## 🔗 OAuth Configuration Check")
+    # Показываем логи
+    show_event_log()
+
+def init_session_state():
+    """Инициализация session state"""
+    if 'oauth_state' not in st.session_state:
+        st.session_state.oauth_state = None
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    if 'user_info' not in st.session_state:
+        st.session_state.user_info = None
+    if 'event_log' not in st.session_state:
+        st.session_state.event_log = []
+
+def log_event(event, data=None):
+    """Логирует события"""
+    timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+    log_entry = {
+        "time": timestamp,
+        "event": event,
+        "data": data or {}
+    }
+    st.session_state.event_log.append(log_entry)
     
-    st.write("**Environment Variables:**")
-    st.write(f"REDIRECT_URI: `{REDIRECT_URI}`")
+    if len(st.session_state.event_log) > 15:
+        st.session_state.event_log = st.session_state.event_log[-15:]
+
+def show_debug_info():
+    """Отладочная информация"""
+    with st.expander("🔍 Debug Info", expanded=False):
+        query_params = dict(st.query_params)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**Query Params:**")
+            if query_params:
+                st.json(query_params)
+            else:
+                st.write("(empty)")
+        
+        with col2:
+            st.write("**OAuth Status:**")
+            st.write(f"authenticated: {st.session_state.authenticated}")
+            st.write(f"oauth_state: {bool(st.session_state.oauth_state)}")
+            st.write(f"REDIRECT_URI: {REDIRECT_URI}")
+
+def handle_oauth_callback(query_params):
+    """Обрабатывает OAuth callback"""
+    st.markdown("## 🔄 OAuth Callback (на root path)")
     
-    # Проверяем соответствие с текущим доменом
-    current_domain = "https://spanishverbint-production.up.railway.app"
-    expected_redirect = f"{current_domain}/auth/callback"
+    code = query_params.get('code')
+    state = query_params.get('state')
+    error = query_params.get('error')
     
-    st.write(f"**Expected:** `{expected_redirect}`")
+    log_event("oauth_callback_received", {
+        "has_code": bool(code),
+        "has_state": bool(state),
+        "has_error": bool(error),
+        "path": "root"
+    })
     
-    if REDIRECT_URI == expected_redirect:
-        st.success("✅ REDIRECT_URI соответствует домену")
-    else:
-        st.error("❌ REDIRECT_URI не соответствует домену!")
-        st.write("**Исправьте переменную окружения в Railway:**")
-        st.code(f"REDIRECT_URI={expected_redirect}")
+    # Проверяем ошибки
+    if error:
+        st.error(f"❌ OAuth Error: {error}")
+        error_description = query_params.get('error_description', 'No description')
+        st.write(f"Description: {error_description}")
+        
+        if st.button("🔄 Try Again"):
+            clear_url_params()
+            st.rerun()
+        return
     
-    # ТЕСТОВЫЕ ССЫЛКИ
-    st.markdown("## 🧪 Тесты callback URL")
+    # Проверяем код
+    if not code:
+        st.error("❌ Authorization code missing")
+        return
     
-    # Тест 1: Прямой переход на callback с параметрами
-    callback_test_url = f"{current_domain}/auth/callback?code=test_code&state=test_state"
-    st.markdown(f"**Тест 1:** [Callback с тестовыми параметрами]({callback_test_url})")
+    # Проверяем state
+    if not state or state != st.session_state.oauth_state:
+        st.error("❌ State mismatch")
+        st.write(f"Received: {state[:20] if state else 'None'}...")
+        st.write(f"Expected: {st.session_state.oauth_state[:20] if st.session_state.oauth_state else 'None'}...")
+        return
     
-    # Тест 2: Прямой переход на callback без параметров
-    callback_empty_url = f"{current_domain}/auth/callback"
-    st.markdown(f"**Тест 2:** [Callback без параметров]({callback_empty_url})")
+    # Все ОК
+    st.success("✅ OAuth callback validation passed!")
+    st.write(f"Code: {code[:30]}...")
+    st.write(f"State: {state[:20]}...")
     
-    # Тест 3: Обычная страница с параметрами
-    main_test_url = f"{current_domain}?test=main_page&timestamp={int(time.time())}"
-    st.markdown(f"**Тест 3:** [Главная с параметрами]({main_test_url})")
+    # Автоматически обрабатываем код
+    with st.spinner("Processing authorization..."):
+        success = process_authorization_code(code)
+        
+        if success:
+            st.success("🎉 Authentication successful!")
+            # Очищаем URL и перезагружаем
+            clear_url_params()
+            time.sleep(1)  # Небольшая пауза
+            st.rerun()
+        else:
+            st.error("❌ Authentication failed")
+
+def process_authorization_code(code):
+    """Обрабатывает authorization code"""
+    try:
+        # Получаем токен
+        token_data = exchange_code_for_token(code)
+        if not token_data or 'access_token' not in token_data:
+            st.error("❌ Failed to get access token")
+            return False
+        
+        access_token = token_data['access_token']
+        st.success("✅ Access token received")
+        
+        # Получаем пользователя
+        user_info = get_user_info(access_token)
+        if not user_info:
+            st.error("❌ Failed to get user info")
+            return False
+        
+        st.success("✅ User info received")
+        
+        # Сохраняем
+        st.session_state.authenticated = True
+        st.session_state.user_info = user_info
+        
+        log_event("authentication_successful", {
+            "user_email": user_info.get('email'),
+            "user_name": user_info.get('name')
+        })
+        
+        return True
+        
+    except Exception as e:
+        st.error(f"❌ Exception: {e}")
+        log_event("authentication_failed", {"error": str(e)})
+        return False
+
+def exchange_code_for_token(code):
+    """Обменивает код на токен"""
+    data = {
+        'client_id': GOOGLE_CLIENT_ID,
+        'client_secret': GOOGLE_CLIENT_SECRET,
+        'code': code,
+        'grant_type': 'authorization_code',
+        'redirect_uri': REDIRECT_URI,  # Теперь это root path
+    }
     
-    # GOOGLE CONSOLE ПРОВЕРКА
-    st.markdown("## 🔧 Google Console Verification")
+    try:
+        response = requests.post(GOOGLE_TOKEN_URL, data=data, timeout=10)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"Token request failed: {response.status_code}")
+            st.code(response.text)
+            return None
+            
+    except Exception as e:
+        st.error(f"Token request exception: {e}")
+        return None
+
+def get_user_info(access_token):
+    """Получает информацию о пользователе"""
+    headers = {'Authorization': f'Bearer {access_token}'}
     
-    st.write("**Проверьте в Google Cloud Console:**")
-    st.write("1. APIs & Services → Credentials")
-    st.write("2. Ваш OAuth 2.0 Client ID")
-    st.write("3. Authorized redirect URIs должен содержать ТОЧНО:")
-    st.code(REDIRECT_URI)
+    try:
+        response = requests.get(GOOGLE_USERINFO_URL, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"User info request failed: {response.status_code}")
+            return None
+            
+    except Exception as e:
+        st.error(f"User info request exception: {e}")
+        return None
+
+def show_login_form():
+    """Показывает форму входа"""
+    st.markdown("## 🔐 Вход в систему")
     
-    # ЛОГИ OAUTH
-    st.markdown("## 📋 OAuth Test")
-    
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([2, 1])
     
     with col1:
-        if st.button("🔐 Test OAuth Flow"):
-            test_oauth_flow()
+        st.write("Войдите через Google для доступа к тренажеру:")
+        
+        if st.button("🔐 Войти через Google", type="primary"):
+            start_oauth_flow()
     
     with col2:
-        if st.button("🧹 Clear All"):
-            st.query_params.clear()
-            st.session_state.oauth_state = None
-            st.rerun()
-    
-    # SESSION STATE
-    st.markdown("## 📊 Session State")
-    st.write(f"oauth_state: {st.session_state.oauth_state}")
-    
-    if st.button("📋 Show Full Session"):
-        st.json(dict(st.session_state))
+        st.info("""
+        **OAuth исправлен!**
+        
+        Теперь используем root path 
+        для redirect вместо 
+        `/auth/callback`
+        """)
 
-def test_oauth_flow():
-    """Тестирует OAuth flow с логированием"""
-    st.write("### 🔄 Testing OAuth Flow...")
-    
+def start_oauth_flow():
+    """Запускает OAuth flow"""
     # Генерируем state
     state = base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8')
     st.session_state.oauth_state = state
     
-    # Проверяем конфигурацию
-    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-        st.error("❌ OAuth credentials missing")
-        return
+    log_event("oauth_flow_started", {"state": state[:20]})
     
-    # Показываем что будем отправлять
+    # Параметры OAuth - REDIRECT_URI теперь root
     params = {
         'client_id': GOOGLE_CLIENT_ID,
-        'redirect_uri': REDIRECT_URI,
+        'redirect_uri': REDIRECT_URI,  # Root path!
         'scope': 'openid email profile',
         'response_type': 'code',
         'state': state,
@@ -221,37 +266,80 @@ def test_oauth_flow():
         'prompt': 'consent'
     }
     
-    auth_url = f"https://accounts.google.com/o/oauth2/auth?{urlencode(params)}"
+    auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
     
-    st.write("**OAuth Parameters:**")
-    st.json(params)
+    st.write(f"**Redirect URI:** {REDIRECT_URI}")
+    st.write(f"**State:** {state[:20]}...")
     
-    st.write("**Full Auth URL:**")
-    st.code(auth_url)
+    # Redirect через JavaScript
+    st.components.v1.html(f"""
+    <script>
+    console.log('OAuth redirect to:', '{auth_url}');
+    window.location.href = '{auth_url}';
+    </script>
+    <div style="text-align: center; padding: 20px; background: #e3f2fd; border-radius: 10px;">
+        <h3>🔄 Redirecting to Google...</h3>
+        <p>State: {state[:20]}...</p>
+        <p>If redirect doesn't work, <a href="{auth_url}" target="_self">click here</a></p>
+    </div>
+    """, height=150)
+
+def show_main_app():
+    """Показывает основное приложение"""
+    st.markdown("## ✅ Авторизован!")
     
-    st.write(f"**State (first 20 chars):** {state[:20]}")
+    user_info = st.session_state.user_info
+    if user_info:
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            st.write(f"**Добро пожаловать, {user_info.get('name')}!**")
+            st.write(f"📧 {user_info.get('email')}")
+            
+            if user_info.get('picture'):
+                st.image(user_info['picture'], width=80)
+        
+        with col2:
+            if st.button("🚪 Выйти"):
+                logout()
+                st.rerun()
     
-    # Инструкции
-    st.info("""
-    **Инструкции:**
-    1. Нажмите ссылку ниже для авторизации
-    2. После авторизации Google вернет вас на callback URL
-    3. Посмотрите на URL Monitor выше - он покажет ТОЧНЫЙ URL куда Google делает redirect
-    4. Проверьте есть ли параметры code и state в URL
-    """)
+    # Простой интерфейс тренажера
+    st.markdown("---")
+    st.markdown("## 🇪🇸 Тренажер глаголов")
     
-    # Ссылка для ручного перехода
-    st.markdown(f"**[🔐 Authorize with Google]({auth_url})**")
+    st.success("🎉 OAuth успешно работает!")
+    st.write("Теперь можно интегрировать полную функциональность тренажера.")
     
-    # Автоматический redirect через JavaScript (опционально)
-    if st.button("🚀 Auto Redirect"):
-        st.components.v1.html(f"""
-        <script>
-        console.log('Redirecting to OAuth...');
-        window.location.href = '{auth_url}';
-        </script>
-        <p>Redirecting...</p>
-        """, height=100)
+    # Демо функционал
+    if st.button("🎯 Начать изучение"):
+        st.balloons()
+        st.write("Здесь будет интерфейс изучения глаголов!")
+
+def clear_url_params():
+    """Очищает URL параметры"""
+    try:
+        st.query_params.clear()
+        log_event("url_params_cleared")
+    except Exception as e:
+        log_event("url_params_clear_failed", {"error": str(e)})
+
+def logout():
+    """Выход из системы"""
+    log_event("user_logout")
+    st.session_state.authenticated = False
+    st.session_state.user_info = None
+    st.session_state.oauth_state = None
+
+def show_event_log():
+    """Показывает лог событий"""
+    if st.session_state.event_log:
+        with st.expander("📋 Event Log", expanded=False):
+            for entry in reversed(st.session_state.event_log[-5:]):
+                st.write(f"**{entry['time']}** - {entry['event']}")
+                if entry['data']:
+                    st.json(entry['data'])
+                st.write("---")
 
 if __name__ == "__main__":
     main()
