@@ -37,6 +37,13 @@ st.markdown("""
         padding-right: 2rem;
     }
     
+    /* Контейнер для основного контента - делаем более компактным */
+    .main-content {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 0 1rem;
+    }
+    
     .verb-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
@@ -46,6 +53,12 @@ st.markdown("""
         margin: 2rem 0;
         box-shadow: 0 12px 40px rgba(102, 126, 234, 0.3);
         transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .verb-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 45px rgba(102, 126, 234, 0.4);
     }
     
     .verb-card.revealed {
@@ -124,6 +137,67 @@ st.markdown("""
         padding: 1rem;
         border-radius: 0.5rem;
         margin: 0.5rem 0;
+    }
+    
+    /* Стили для правил */
+    .rules-section {
+        margin-top: 20px;
+    }
+    
+    .rules-toggle {
+        width: 100%;
+        padding: 15px;
+        background: #f7fafc;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        color: #4a5568;
+        transition: all 0.3s ease;
+    }
+    
+    .rules-toggle:hover {
+        background: #edf2f7;
+    }
+    
+    .rules-content {
+        background: #f7fafc;
+        border-radius: 0 0 10px 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .rules-content h3 {
+        color: #2d3748;
+        margin-bottom: 15px;
+        font-size: 1.2rem;
+    }
+    
+    .rules-content p {
+        line-height: 1.6;
+        margin-bottom: 10px;
+        color: #4a5568;
+    }
+    
+    .example {
+        background: rgba(102, 126, 234, 0.1);
+        padding: 10px;
+        border-radius: 8px;
+        margin: 10px 0;
+        font-family: monospace;
+    }
+    
+    .click-hint {
+        font-size: 1.2rem;
+        margin-top: 1rem;
+        opacity: 0.8;
+        animation: pulse-gentle 2s infinite;
+    }
+    
+    @keyframes pulse-gentle {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; }
+        100% { opacity: 0.6; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -694,7 +768,7 @@ def show_sidebar_content():
     """Показывает содержимое боковой панели"""
     st.markdown("---")
     
-    # Статистика
+    # Статистика в боковой панели
     st.subheader("📊 Сегодня")
     col1, col2 = st.columns(2)
     with col1:
@@ -738,34 +812,31 @@ def show_sidebar_content():
     st.session_state.settings['new_cards_per_day'] = st.slider(
         "Новых карточек в день", 1, 50, st.session_state.settings['new_cards_per_day']
     )
-    
-    # Правила грамматики
-    st.markdown("---")
-    with st.expander("📚 Правила спряжения"):
-        current_tenses = st.session_state.settings['selected_tenses']
-        for tense in current_tenses:
-            if tense in GRAMMAR_RULES:
-                rule = GRAMMAR_RULES[tense]
-                st.markdown(f"### {rule['title']}")
-                st.markdown(rule['content'])
 
 def show_learning_interface():
     """Показывает интерфейс изучения"""
-    # Получаем следующую карточку
-    if not st.session_state.current_card:
-        st.session_state.current_card = get_next_card()
-        st.session_state.is_revealed = False
-    
-    if not st.session_state.current_card:
-        st.success("🎉 Отлично! Вы завершили все повторения на сегодня!")
-        st.info("Возвращайтесь завтра для новых карточек или измените настройки в боковой панели.")
+    # Контейнер для более компактного интерфейса
+    with st.container():
+        st.markdown('<div class="main-content">', unsafe_allow_html=True)
         
-        if st.button("🔄 Получить новую карточку"):
-            force_new_card()
-        return
-    
-    # Отображаем карточку
-    show_verb_card()
+        # Получаем следующую карточку
+        if not st.session_state.current_card:
+            st.session_state.current_card = get_next_card()
+            st.session_state.is_revealed = False
+        
+        if not st.session_state.current_card:
+            st.success("🎉 Отлично! Вы завершили все повторения на сегодня!")
+            st.info("Возвращайтесь завтра для новых карточек или измените настройки в боковой панели.")
+            
+            if st.button("🔄 Получить новую карточку"):
+                force_new_card()
+            st.markdown('</div>', unsafe_allow_html=True)
+            return
+        
+        # Отображаем карточку
+        show_verb_card()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def show_verb_card():
     """Показывает карточку глагола"""
@@ -781,48 +852,46 @@ def show_verb_card():
     verb_info = VERBS[card.verb]
     is_revealed = st.session_state.is_revealed
     
-    # Карточка глагола
-    card_class = "verb-card revealed" if is_revealed else "verb-card"
-    
-    st.markdown(f"""
-    <div class="{card_class}">
-        <div class="verb-title">{card.verb}</div>
-        <div class="verb-translation">{verb_info['translation']}</div>
-        <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
-            {get_tense_name(card.tense)}
-        </div>
-        <div class="pronoun-display">
-            {PRONOUNS[card.pronoun_index]}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Информация о карточке
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Повторений", card.total_reviews)
-    with col2:
-        accuracy = (card.correct_reviews / card.total_reviews * 100) if card.total_reviews > 0 else 0
-        st.metric("Точность", f"{accuracy:.0f}%")
-    with col3:
-        st.metric("Интервал", f"{card.interval} дн.")
-    with col4:
-        st.metric("Легкость", f"{card.easiness_factor:.1f}")
-    
-    # Кнопки управления
+    # Отображаем карточку
     if not is_revealed:
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            if st.button("🔍 Показать ответ", type="primary", use_container_width=True):
-                st.session_state.is_revealed = True
-                st.rerun()
+        # Красивая кликабельная карточка с вопросом
+        st.markdown(f"""
+        <div class="verb-card">
+            <div class="verb-title">{card.verb}</div>
+            <div class="verb-translation">{verb_info['translation']}</div>
+            <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
+                {get_tense_name(card.tense)}
+            </div>
+            <div class="pronoun-display">
+                {PRONOUNS[card.pronoun_index]}
+            </div>
+            <div class="click-hint">
+                🔍 Нажмите на кнопку, чтобы увидеть ответ
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Кнопка для показа ответа
+        if st.button("🔍 Показать ответ", type="primary", use_container_width=True):
+            st.session_state.is_revealed = True
+            st.rerun()
     else:
         # Показываем ответ
         conjugation = CONJUGATIONS[card.tense][card.verb][card.pronoun_index]
         
         st.markdown(f"""
-        <div style="text-align: center; margin: 2rem 0;">
-            <div class="answer-display">✅ {conjugation}</div>
+        <div class="verb-card revealed">
+            <div class="verb-title">{card.verb}</div>
+            <div class="verb-translation">{verb_info['translation']}</div>
+            <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
+                {get_tense_name(card.tense)}
+            </div>
+            <div class="pronoun-display">
+                {PRONOUNS[card.pronoun_index]}
+            </div>
+            <div class="answer-display">
+                ✅ {conjugation}
+            </div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -847,6 +916,49 @@ def show_verb_card():
         with col4:
             if st.button("😎 Легко\n(> 4 дней)", key="easy", use_container_width=True, help="Помню мгновенно"):
                 process_answer(Difficulty.EASY)
+    
+    # Правила спряжения для выбранных времен
+    st.markdown("---")
+    st.subheader("📚 Правила спряжения")
+    
+    for tense in st.session_state.settings['selected_tenses']:
+        if tense in GRAMMAR_RULES:
+            with st.expander(f"{GRAMMAR_RULES[tense]['title']}", expanded=False):
+                st.markdown(GRAMMAR_RULES[tense]['content'])
+    
+    # Советы по изучению - в самом низу
+    if st.button("💡 Советы по эффективному изучению", key="study_tips", use_container_width=True):
+        show_study_tips()
+
+def show_study_tips():
+    """Показывает советы по эффективному изучению"""
+    st.header("💡 Советы по эффективному изучению")
+    
+    with st.expander("🧠 Принципы интервального повторения", expanded=True):
+        st.markdown("""
+        **Как работает система:**
+        - Карточки показываются **прямо перед тем, как вы их забудете**
+        - **Увеличивающиеся интервалы** при правильных ответах
+        - **Чаще повторяются** при неправильных ответах
+        
+        **Честная самооценка - ключ к успеху:**
+        - **❌ Снова** - не помню вообще или очень неуверенно
+        - **😓 Сложно** - помню, но с большим усилием  
+        - **😊 Хорошо** - помню уверенно, но не мгновенно
+        - **😎 Легко** - помню мгновенно, без усилий
+        """)
+    
+    with st.expander("📅 Рекомендуемый режим изучения"):
+        st.markdown("""
+        **Ежедневная практика:**
+        - **10-20 минут** каждый день лучше, чем 2 часа раз в неделю
+        - **Регулярность** важнее продолжительности
+        - **Одно и то же время** помогает выработать привычку
+        
+        **Оптимальные настройки:**
+        - *Начинающие*: 5-10 новых карточек, 20-50 повторений, только Presente
+        - *Продвинутые*: 15-25 новых карточек, 100+ повторений, все времена
+        """)
 
 def get_tense_name(tense):
     """Возвращает русское название времени"""
