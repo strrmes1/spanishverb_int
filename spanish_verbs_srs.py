@@ -772,6 +772,12 @@ def show_sidebar_content():
     # Настройки
     st.subheader("⚙️ Настройки")
     
+    # Сохраняем текущие настройки для сравнения
+    current_settings = {
+        'selected_tenses': st.session_state.settings['selected_tenses'].copy(),
+        'new_cards_per_day': st.session_state.settings['new_cards_per_day']
+    }
+    
     # Выбор времен
     tense_options = {
         'presente': 'Presente',
@@ -780,17 +786,40 @@ def show_sidebar_content():
         'imperfecto': 'Imperfecto'
     }
     
-    selected_tenses = []
+    # Временные переменные для новых настроек
+    new_selected_tenses = []
     for tense_key, tense_name in tense_options.items():
         if st.checkbox(tense_name, value=tense_key in st.session_state.settings['selected_tenses'], key=f"tense_{tense_key}"):
-            selected_tenses.append(tense_key)
+            new_selected_tenses.append(tense_key)
     
-    st.session_state.settings['selected_tenses'] = selected_tenses or ['presente']
+    new_selected_tenses = new_selected_tenses or ['presente']
     
     # Лимиты
-    st.session_state.settings['new_cards_per_day'] = st.slider(
-        "Новых карточек в день", 1, 50, st.session_state.settings['new_cards_per_day']
+    new_cards_per_day = st.slider(
+        "Новых карточек в день", 1, 50, st.session_state.settings['new_cards_per_day'], key="new_cards_slider"
     )
+    
+    # Проверяем, изменились ли настройки
+    settings_changed = (
+        current_settings['selected_tenses'] != new_selected_tenses or
+        current_settings['new_cards_per_day'] != new_cards_per_day
+    )
+    
+    # Кнопка применить (показывается только если настройки изменились)
+    if settings_changed:
+        if st.button("✅ Применить настройки", key="apply_settings", use_container_width=True, type="primary"):
+            # Применяем настройки
+            st.session_state.settings['selected_tenses'] = new_selected_tenses
+            st.session_state.settings['new_cards_per_day'] = new_cards_per_day
+            
+            # Сбрасываем текущую карточку чтобы обновить в соответствии с новыми настройками
+            st.session_state.current_card = None
+            st.session_state.is_revealed = False
+            
+            st.success("✅ Настройки применены!")
+            st.rerun()
+    elif st.session_state.settings['selected_tenses']:
+        st.info("💡 Измените настройки выше, чтобы появилась кнопка применения")
     
     st.markdown("---")
     
