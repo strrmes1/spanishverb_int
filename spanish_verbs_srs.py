@@ -701,28 +701,14 @@ def start_oauth_flow():
     
     auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
     
-    st.success("🔐 OAuth готов к запуску!")
-    
+    # Переходим сразу к авторизации
     st.markdown(f"""
-    <div style="text-align: center; margin: 2rem 0;">
-        <a href="{auth_url}" target="_self" style="text-decoration: none;">
-            <button style="
-                background: linear-gradient(135deg, #4285f4, #34a853);
-                color: white;
-                padding: 1rem 3rem;
-                border: none;
-                border-radius: 50px;
-                font-size: 1.2rem;
-                font-weight: bold;
-                cursor: pointer;
-                box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
-                transition: all 0.3s ease;
-            " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                🔐 Открыть Google OAuth
-            </button>
-        </a>
-    </div>
+    <script>
+        window.location.href = "{auth_url}";
+    </script>
     """, unsafe_allow_html=True)
+    
+    st.info("🔄 Перенаправляем на Google для авторизации...")
 
 def show_main_app():
     """Показывает основное приложение"""
