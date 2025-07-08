@@ -13,7 +13,7 @@ from enum import Enum
 
 # Конфигурация
 st.set_page_config(
-    page_title="🇪🇸 Тренажер испанских глаголов - Полная версия",
+    page_title="Тренажер испанских глаголов - Полная версия",
     page_icon="🇪🇸",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -640,7 +640,7 @@ def show_welcome_page():
     st.markdown("""
     <div style="text-align: center; padding: 3rem 0;">
         <h1 style="font-size: 4rem; color: #2d3748; margin-bottom: 1rem;">
-            🇪🇸 Тренажер испанских глаголов
+            Тренажер испанских глаголов 🇪🇸
         </h1>
         <h3 style="color: #718096; font-weight: 400; margin-bottom: 3rem;">
             Изучайте спряжения с системой интервального повторения
@@ -701,14 +701,29 @@ def start_oauth_flow():
     
     auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
     
-    # Переходим сразу к авторизации
+    # Показываем ссылку для авторизации
     st.markdown(f"""
-    <script>
-        window.location.href = "{auth_url}";
-    </script>
+    <div style="text-align: center; margin: 2rem 0;">
+        <a href="{auth_url}" target="_self" style="text-decoration: none;">
+            <button style="
+                background: linear-gradient(135deg, #4285f4, #34a853);
+                color: white;
+                padding: 1rem 3rem;
+                border: none;
+                border-radius: 25px;
+                font-size: 1.2rem;
+                font-weight: bold;
+                cursor: pointer;
+                box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
+                transition: all 0.3s ease;
+            " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                🔐 Перейти к авторизации Google
+            </button>
+        </a>
+    </div>
     """, unsafe_allow_html=True)
     
-    st.info("🔄 Перенаправляем на Google для авторизации...")
+    st.info("📌 Нажмите на кнопку выше для перехода к авторизации Google")
 
 def show_main_app():
     """Показывает основное приложение"""
@@ -717,7 +732,7 @@ def show_main_app():
     user_info = st.session_state.user_info
     
     # Заголовок
-    st.title("🇪🇸 Тренажер испанских глаголов")
+    st.title("Тренажер испанских глаголов 🇪🇸")
     st.caption(f"Добро пожаловать, {user_info.get('name')}! Система интервального повторения")
     
     # Боковая панель
@@ -754,29 +769,7 @@ def show_sidebar_content():
     """Показывает содержимое боковой панели"""
     st.markdown("---")
     
-    # Статистика в боковой панели
-    st.subheader("📊 Сегодня")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Повторений", st.session_state.daily_stats['reviews_today'])
-        st.metric("Новых", st.session_state.daily_stats['new_cards_today'])
-    with col2:
-        st.metric("Правильных", st.session_state.daily_stats['correct_today'])
-        due_count = len(get_due_cards())
-        st.metric("К повторению", due_count)
-    
-    # Общая статистика
-    total_cards = len(st.session_state.cards)
-    total_reviews = sum(card.total_reviews for card in st.session_state.cards.values())
-    total_correct = sum(card.correct_reviews for card in st.session_state.cards.values())
-    accuracy = (total_correct / total_reviews * 100) if total_reviews > 0 else 0
-    
-    st.subheader("📈 Всего")
-    st.metric("Карточек", total_cards)
-    st.metric("Точность", f"{accuracy:.1f}%")
-    
     # Настройки
-    st.markdown("---")
     st.subheader("⚙️ Настройки")
     
     # Выбор времен
@@ -798,6 +791,29 @@ def show_sidebar_content():
     st.session_state.settings['new_cards_per_day'] = st.slider(
         "Новых карточек в день", 1, 50, st.session_state.settings['new_cards_per_day']
     )
+    
+    st.markdown("---")
+    
+    # Статистика в боковой панели
+    st.subheader("📊 Сегодня")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Повторений", st.session_state.daily_stats['reviews_today'])
+        st.metric("Новых", st.session_state.daily_stats['new_cards_today'])
+    with col2:
+        st.metric("Правильных", st.session_state.daily_stats['correct_today'])
+        due_count = len(get_due_cards())
+        st.metric("К повторению", due_count)
+    
+    # Общая статистика
+    total_cards = len(st.session_state.cards)
+    total_reviews = sum(card.total_reviews for card in st.session_state.cards.values())
+    total_correct = sum(card.correct_reviews for card in st.session_state.cards.values())
+    accuracy = (total_correct / total_reviews * 100) if total_reviews > 0 else 0
+    
+    st.subheader("📈 Всего")
+    st.metric("Карточек", total_cards)
+    st.metric("Точность", f"{accuracy:.1f}%")
 
 def show_learning_interface():
     """Показывает интерфейс изучения"""
@@ -857,10 +873,12 @@ def show_verb_card():
         </div>
         """, unsafe_allow_html=True)
         
-        # Кнопка для показа ответа
-        if st.button("🔍 Показать ответ", type="primary", use_container_width=True):
-            st.session_state.is_revealed = True
-            st.rerun()
+        # Кнопка для показа ответа - делаем шире
+        col1, col2, col3 = st.columns([1, 3, 1])
+        with col2:
+            if st.button("🔍 Показать ответ", type="primary", use_container_width=True):
+                st.session_state.is_revealed = True
+                st.rerun()
     else:
         # Показываем ответ
         conjugation = CONJUGATIONS[card.tense][card.verb][card.pronoun_index]
