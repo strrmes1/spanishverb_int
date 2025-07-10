@@ -675,14 +675,48 @@ def show_welcome_page():
         </div>
         """, unsafe_allow_html=True)
     
-    # Кнопка входа
+    # Кнопка входа - сразу ведет на Google OAuth
     st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    # Генерируем OAuth URL
+    state = base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8')
+    st.session_state.oauth_state = state
+    
+    params = {
+        'client_id': GOOGLE_CLIENT_ID,
+        'redirect_uri': REDIRECT_URI,
+        'scope': 'openid email profile',
+        'response_type': 'code',
+        'state': state,
+        'access_type': 'offline',
+        'prompt': 'consent'
+    }
+    
+    auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button("🔐 Войти через Google", type="primary", use_container_width=True):
-            start_oauth_flow()
-            return
+        st.markdown(f"""
+        <div style="text-align: center;">
+            <a href="{auth_url}" target="_self" style="text-decoration: none;">
+                <button style="
+                    background: linear-gradient(135deg, #4285f4, #34a853);
+                    color: white;
+                    padding: 1rem 3rem;
+                    border: none;
+                    border-radius: 25px;
+                    font-size: 1.2rem;
+                    font-weight: bold;
+                    cursor: pointer;
+                    box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
+                    transition: all 0.3s ease;
+                    width: 100%;
+                " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                    🔐 Войти через Google
+                </button>
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
 
 def start_oauth_flow():
     """Запускает OAuth flow"""
