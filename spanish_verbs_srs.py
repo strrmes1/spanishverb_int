@@ -609,17 +609,14 @@ def show_verb_card():
                 {PRONOUNS[card.pronoun_index]}
             </div>
             
+hint">
 
+                {t('click_to_reveal')}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
-        col1, col2, col3 = st.columns([1, 3, 1])
-        with col2:
-            if st.button(t('show_answer'), type="primary", use_container_width=True):
-                st.session_state.is_revealed = True
-                st.rerun()
-        
-
-        
-        # Кнопка для показа ответа - делаем шире
+        # Кнопка для показа ответа
         col1, col2, col3 = st.columns([1, 3, 1])
         with col2:
             if st.button(t('show_answer'), type="primary", use_container_width=True):
@@ -640,7 +637,7 @@ def show_verb_card():
                 {PRONOUNS[card.pronoun_index]}
             </div>
             <div class="answer-display">
-                ✅ {conjugation}
+                ✓ {conjugation}
             </div>
         </div>
         """, unsafe_allow_html=True)
