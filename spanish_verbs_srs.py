@@ -16,7 +16,7 @@ from enum import Enum
 # Импортируем систему переводов
 from localization.translations import (
     get_text, get_grammar_rule, get_available_languages, 
-    get_current_language, set_language, t
+    get_current_language, set_language, t, get_verb_translation
 )
 
 # Конфигурация
@@ -156,46 +156,46 @@ class Card:
 
 # База данных глаголов
 VERBS = {
-    'ser': {'translation': 'быть, являться', 'type': 'irregular'},
-    'estar': {'translation': 'находиться, быть', 'type': 'irregular'},
-    'tener': {'translation': 'иметь', 'type': 'irregular'},
-    'hacer': {'translation': 'делать', 'type': 'irregular'},
-    'decir': {'translation': 'говорить, сказать', 'type': 'irregular'},
-    'ir': {'translation': 'идти, ехать', 'type': 'irregular'},
-    'ver': {'translation': 'видеть', 'type': 'irregular'},
-    'dar': {'translation': 'давать', 'type': 'irregular'},
-    'saber': {'translation': 'знать', 'type': 'irregular'},
-    'querer': {'translation': 'хотеть, любить', 'type': 'irregular'},
-    'llegar': {'translation': 'прибывать, приходить', 'type': 'regular-ar'},
-    'pasar': {'translation': 'проходить, проводить', 'type': 'regular-ar'},
-    'deber': {'translation': 'быть должным', 'type': 'regular-er'},
-    'poner': {'translation': 'класть, ставить', 'type': 'irregular'},
-    'parecer': {'translation': 'казаться', 'type': 'irregular'},
-    'quedar': {'translation': 'оставаться', 'type': 'regular-ar'},
-    'creer': {'translation': 'верить, считать', 'type': 'regular-er'},
-    'hablar': {'translation': 'говорить', 'type': 'regular-ar'},
-    'llevar': {'translation': 'носить, нести', 'type': 'regular-ar'},
-    'dejar': {'translation': 'оставлять', 'type': 'regular-ar'},
-    'seguir': {'translation': 'следовать, продолжать', 'type': 'irregular'},
-    'encontrar': {'translation': 'находить, встречать', 'type': 'irregular'},
-    'llamar': {'translation': 'звать, называть', 'type': 'regular-ar'},
-    'venir': {'translation': 'приходить', 'type': 'irregular'},
-    'pensar': {'translation': 'думать', 'type': 'irregular'},
-    'salir': {'translation': 'выходить', 'type': 'irregular'},
-    'vivir': {'translation': 'жить', 'type': 'regular-ir'},
-    'sentir': {'translation': 'чувствовать', 'type': 'irregular'},
-    'trabajar': {'translation': 'работать', 'type': 'regular-ar'},
-    'estudiar': {'translation': 'изучать', 'type': 'regular-ar'},
-    'comprar': {'translation': 'покупать', 'type': 'regular-ar'},
-    'comer': {'translation': 'есть', 'type': 'regular-er'},
-    'beber': {'translation': 'пить', 'type': 'regular-er'},
-    'escribir': {'translation': 'писать', 'type': 'regular-ir'},
-    'leer': {'translation': 'читать', 'type': 'regular-er'},
-    'abrir': {'translation': 'открывать', 'type': 'irregular'},
-    'cerrar': {'translation': 'закрывать', 'type': 'irregular'},
-    'empezar': {'translation': 'начинать', 'type': 'irregular'},
-    'terminar': {'translation': 'заканчивать', 'type': 'regular-ar'},
-    'poder': {'translation': 'мочь', 'type': 'irregular'}
+    'ser': {'type': 'irregular'},
+    'estar': {'type': 'irregular'},
+    'tener': {'type': 'irregular'},
+    'hacer': {'type': 'irregular'},
+    'decir': {'type': 'irregular'},
+    'ir': {'type': 'irregular'},
+    'ver': {'type': 'irregular'},
+    'dar': {'type': 'irregular'},
+    'saber': {'type': 'irregular'},
+    'querer': {'type': 'irregular'},
+    'llegar': {'type': 'regular-ar'},
+    'pasar': {'type': 'regular-ar'},
+    'deber': {'type': 'regular-er'},
+    'poner': {'type': 'irregular'},
+    'parecer': {'type': 'irregular'},
+    'quedar': {'type': 'regular-ar'},
+    'creer': {'type': 'regular-er'},
+    'hablar': {'type': 'regular-ar'},
+    'llevar': {'type': 'regular-ar'},
+    'dejar': {'type': 'regular-ar'},
+    'seguir': {'type': 'irregular'},
+    'encontrar': {'type': 'irregular'},
+    'llamar': {'type': 'regular-ar'},
+    'venir': {'type': 'irregular'},
+    'pensar': {'type': 'irregular'},
+    'salir': {'type': 'irregular'},
+    'vivir': {'type': 'regular-ir'},
+    'sentir': {'type': 'irregular'},
+    'trabajar': {'type': 'regular-ar'},
+    'estudiar': {'type': 'regular-ar'},
+    'comprar': {'type': 'regular-ar'},
+    'comer': {'type': 'regular-er'},
+    'beber': {'type': 'regular-er'},
+    'escribir': {'type': 'regular-ir'},
+    'leer': {'type': 'regular-er'},
+    'abrir': {'type': 'irregular'},
+    'cerrar': {'type': 'irregular'},
+    'empezar': {'type': 'irregular'},
+    'terminar': {'type': 'regular-ar'},
+    'poder': {'type': 'irregular'}
 }
 
 PRONOUNS = ['yo', 'tú', 'él/ella', 'nosotros', 'vosotros', 'ellos/ellas']
@@ -593,7 +593,8 @@ def show_verb_card():
         next_card()
         return
     
-    verb_info = VERBS[card.verb]
+   # старый вариант verb_info = VERBS[card.verb]
+    verb_translation = get_verb_translation(card.verb)
     is_revealed = st.session_state.is_revealed
     
     # Отображаем карточку
@@ -602,7 +603,8 @@ def show_verb_card():
         st.markdown(f"""
         <div class="verb-card">
             <div class="verb-title">{card.verb}</div>
-            <div class="verb-translation">{verb_info['translation']}</div>
+            # old variant <div class="verb-translation">{verb_info['translation']}</div>
+            <div class="verb-translation">{verb_translation}</div>
             <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
                 {t(card.tense)}
             </div>
