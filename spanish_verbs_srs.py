@@ -609,12 +609,7 @@ def show_verb_card():
                 {PRONOUNS[card.pronoun_index]}
             </div>
             
-hint">
 
-                {t('click_to_reveal')}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
         
         col1, col2, col3 = st.columns([1, 3, 1])
         with col2:
@@ -622,12 +617,7 @@ hint">
                 st.session_state.is_revealed = True
                 st.rerun()
         
-hint">
 
-            {t('click_to_reveal')}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
         
         # Кнопка для показа ответа - делаем шире
         col1, col2, col3 = st.columns([1, 3, 1])
