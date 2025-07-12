@@ -283,7 +283,7 @@ VERB_TRANSLATIONS = {
         'empezar': 'to begin, to start',
         'terminar': 'to finish, to end',
         'poder': 'to be able to, can'
-    }
+    },
 }
 
 def get_verb_translation(verb: str, language: str = None) -> str:
