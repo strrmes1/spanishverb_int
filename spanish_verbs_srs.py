@@ -596,18 +596,31 @@ def show_verb_card():
     verb_translation = get_verb_translation(card.verb)
     is_revealed = st.session_state.is_revealed
     
-    # Отображаем карточку
+   # Отображаем карточку
     if not is_revealed:
-    st.markdown(f"""
-    <div class="verb-card">
-        <div class="verb-title">{card.verb}</div>
-        <div class="verb-translation">{verb_translation}</div>
-        <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
-            {t(card.tense)}
+        st.markdown(f"""
+        <div class="verb-card">
+            <div class="verb-title">{card.verb}</div>
+            <div class="verb-translation">{verb_translation}</div>
+            <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
+                {t(card.tense)}
+            </div>
+            <div class="pronoun-display">
+                {PRONOUNS[card.pronoun_index]}
+            </div>
+            
+hint">
+
+                {t('click_to_reveal')}
+            </div>
         </div>
-        <div class="pronoun-display">
-            {PRONOUNS[card.pronoun_index]}
-        </div>
+        """, unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns([1, 3, 1])
+        with col2:
+            if st.button(t('show_answer'), type="primary", use_container_width=True):
+                st.session_state.is_revealed = True
+                st.rerun()
         
 hint">
 
