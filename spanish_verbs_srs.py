@@ -593,17 +593,14 @@ def show_verb_card():
         next_card()
         return
     
-   
     verb_translation = get_verb_translation(card.verb)
     is_revealed = st.session_state.is_revealed
     
     # Отображаем карточку
     if not is_revealed:
-        # Красивая кликабельная карточка с вопросом
         st.markdown(f"""
         <div class="verb-card">
             <div class="verb-title">{card.verb}</div>
-            
             <div class="verb-translation">{verb_translation}</div>
             <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
                 {t(card.tense)}
@@ -611,9 +608,7 @@ def show_verb_card():
             <div class="pronoun-display">
                 {PRONOUNS[card.pronoun_index]}
             </div>
-            
-hint">
-
+            hint">
                 {t('click_to_reveal')}
             </div>
         </div>
