@@ -612,7 +612,7 @@ def show_verb_card():
 hint">
 
             {t('click_to_reveal')}
-        лишний див</div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
         
