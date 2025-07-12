@@ -194,7 +194,7 @@ TRANSLATIONS = {
         'optimal_settings': 'Optimal settings:',
         'beginners_settings': '*Beginners*: 5-10 new cards, 20-50 reviews, Present only',
         'advanced_settings': '*Advanced*: 15-25 new cards, 100+ reviews, all tenses',
-    }
+    },
 #______________________________
 
 
