@@ -598,21 +598,23 @@ def show_verb_card():
     
     # Отображаем карточку
     if not is_revealed:
-        st.markdown(f"""
-        <div class="verb-card">
-            <div class="verb-title">{card.verb}</div>
-            <div class="verb-translation">{verb_translation}</div>
-            <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
-                {t(card.tense)}
-            </div>
-            <div class="pronoun-display">
-                {PRONOUNS[card.pronoun_index]}
-            </div>
-            hint">
-                {t('click_to_reveal')}
-            </div>
+    st.markdown(f"""
+    <div class="verb-card">
+        <div class="verb-title">{card.verb}</div>
+        <div class="verb-translation">{verb_translation}</div>
+        <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
+            {t(card.tense)}
         </div>
-        """, unsafe_allow_html=True)
+        <div class="pronoun-display">
+            {PRONOUNS[card.pronoun_index]}
+        </div>
+        
+hint">
+
+            {t('click_to_reveal')}
+        лишний див</div>
+    </div>
+    """, unsafe_allow_html=True)
         
         # Кнопка для показа ответа - делаем шире
         col1, col2, col3 = st.columns([1, 3, 1])
