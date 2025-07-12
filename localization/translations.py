@@ -1,8 +1,11 @@
 # localization/translations.py
 """
-Файл с переводами для всех языков
+Полный файл с переводами для всех языков (исправленная версия)
 """
 
+import streamlit as st
+
+# Основные переводы интерфейса
 TRANSLATIONS = {
     'ru': {
         # Основные элементы интерфейса
@@ -194,9 +197,8 @@ TRANSLATIONS = {
         'optimal_settings': 'Optimal settings:',
         'beginners_settings': '*Beginners*: 5-10 new cards, 20-50 reviews, Present only',
         'advanced_settings': '*Advanced*: 15-25 new cards, 100+ reviews, all tenses',
-    },
-#______________________________
-
+    }
+}
 
 # Переводы глаголов на разные языки
 VERB_TRANSLATIONS = {
@@ -283,177 +285,7 @@ VERB_TRANSLATIONS = {
         'empezar': 'to begin, to start',
         'terminar': 'to finish, to end',
         'poder': 'to be able to, can'
-    },
-}
-
-def get_verb_translation(verb: str, language: str = None) -> str:
-    """
-    Получить перевод глагола на указанном языке
-    
-    Args:
-        verb: Инфинитив глагола
-        language: Код языка ('ru' или 'en')
-    
-    Returns:
-        Перевод глагола или сам глагол если перевод не найден
-    """
-    if language is None:
-        language = get_current_language()
-    
-    if language not in VERB_TRANSLATIONS:
-        language = 'ru'  # Fallback на русский
-    
-    return VERB_TRANSLATIONS[language].get(verb, verb)
-
-# Обновите функцию show_verb_card в main файле:
-
-def show_verb_card():
-    """Показывает карточку глагола с поддержкой языков"""
-    card = st.session_state.current_card
-    
-    if (card.verb not in VERBS or 
-        card.tense not in CONJUGATIONS or 
-        card.verb not in CONJUGATIONS[card.tense]):
-        st.error(t('card_data_corrupted'))
-        next_card()
-        return
-    
-    # ИСПРАВЛЕНИЕ: Используем get_verb_translation вместо verb_info['translation']
-    verb_translation = get_verb_translation(card.verb)
-    is_revealed = st.session_state.is_revealed
-    
-    # Отображаем карточку
-    if not is_revealed:
-        # Красивая кликабельная карточка с вопросом
-        st.markdown(f"""
-        <div class="verb-card">
-            <div class="verb-title">{card.verb}</div>
-            <div class="verb-translation">{verb_translation}</div>
-            <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
-                {t(card.tense)}
-            </div>
-            <div class="pronoun-display">
-                {PRONOUNS[card.pronoun_index]}
-            </div>
-            
-hint">
-
-                {t('click_to_reveal')}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Кнопка для показа ответа - делаем шире
-        col1, col2, col3 = st.columns([1, 3, 1])
-        with col2:
-            if st.button(t('show_answer'), type="primary", use_container_width=True):
-                st.session_state.is_revealed = True
-                st.rerun()
-    else:
-        # Показываем ответ
-        conjugation = CONJUGATIONS[card.tense][card.verb][card.pronoun_index]
-        
-        st.markdown(f"""
-        <div class="verb-card revealed">
-            <div class="verb-title">{card.verb}</div>
-            <div class="verb-translation">{verb_translation}</div>
-            <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
-                {t(card.tense)}
-            </div>
-            <div class="pronoun-display">
-                {PRONOUNS[card.pronoun_index]}
-            </div>
-            <div class="answer-display">
-                ✅ {conjugation}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Кнопки оценки сложности
-        st.subheader(t('rate_difficulty'))
-        st.caption(t('honest_evaluation'))
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            if st.button(t('again'), key="again", use_container_width=True, help=t('again_help')):
-                process_answer(Difficulty.AGAIN)
-        
-        with col2:
-            if st.button(t('hard'), key="hard", use_container_width=True, help=t('hard_help')):
-                process_answer(Difficulty.HARD)
-        
-        with col3:
-            if st.button(t('good'), key="good", use_container_width=True, help=t('good_help')):
-                process_answer(Difficulty.GOOD)
-        
-        with col4:
-            if st.button(t('easy'), key="easy", use_container_width=True, help=t('easy_help')):
-                process_answer(Difficulty.EASY)
-    
-    # Правила спряжения для выбранных времен
-    st.markdown("---")
-    st.subheader(t('grammar_rules'))
-    
-    current_lang = get_current_language()
-    for tense in st.session_state.settings['selected_tenses']:
-        rule = get_grammar_rule(tense, current_lang)
-        with st.expander(f"{rule['title']}", expanded=False):
-            st.markdown(rule['content'])
-    
-    # Советы по изучению - в самом низу
-    if st.button(t('study_tips'), key="study_tips", use_container_width=True):
-        show_study_tips()
-
-# ТАКЖЕ нужно удалить/обновить старую структуру VERBS:
-
-# Старая структура (можно упростить, оставив только type):
-VERBS = {
-    'ser': {'type': 'irregular'},
-    'estar': {'type': 'irregular'},
-    'tener': {'type': 'irregular'},
-    'hacer': {'type': 'irregular'},
-    'decir': {'type': 'irregular'},
-    'ir': {'type': 'irregular'},
-    'ver': {'type': 'irregular'},
-    'dar': {'type': 'irregular'},
-    'saber': {'type': 'irregular'},
-    'querer': {'type': 'irregular'},
-    'llegar': {'type': 'regular-ar'},
-    'pasar': {'type': 'regular-ar'},
-    'deber': {'type': 'regular-er'},
-    'poner': {'type': 'irregular'},
-    'parecer': {'type': 'irregular'},
-    'quedar': {'type': 'regular-ar'},
-    'creer': {'type': 'regular-er'},
-    'hablar': {'type': 'regular-ar'},
-    'llevar': {'type': 'regular-ar'},
-    'dejar': {'type': 'regular-ar'},
-    'seguir': {'type': 'irregular'},
-    'encontrar': {'type': 'irregular'},
-    'llamar': {'type': 'regular-ar'},
-    'venir': {'type': 'irregular'},
-    'pensar': {'type': 'irregular'},
-    'salir': {'type': 'irregular'},
-    'vivir': {'type': 'regular-ir'},
-    'sentir': {'type': 'irregular'},
-    'trabajar': {'type': 'regular-ar'},
-    'estudiar': {'type': 'regular-ar'},
-    'comprar': {'type': 'regular-ar'},
-    'comer': {'type': 'regular-er'},
-    'beber': {'type': 'regular-er'},
-    'escribir': {'type': 'regular-ir'},
-    'leer': {'type': 'regular-er'},
-    'abrir': {'type': 'irregular'},
-    'cerrar': {'type': 'irregular'},
-    'empezar': {'type': 'irregular'},
-    'terminar': {'type': 'regular-ar'},
-    'poder': {'type': 'irregular'}
-}
-
-#______________________________    
-
-    
+    }
 }
 
 # Правила грамматики
@@ -613,6 +445,25 @@ def get_text(key: str, language: str = 'ru') -> str:
         # Если перевод не найден, возвращаем ключ
         return f"[{key}]"
 
+def get_verb_translation(verb: str, language: str = None) -> str:
+    """
+    Получить перевод глагола на указанном языке
+    
+    Args:
+        verb: Инфинитив глагола
+        language: Код языка ('ru' или 'en')
+    
+    Returns:
+        Перевод глагола или сам глагол если перевод не найден
+    """
+    if language is None:
+        language = get_current_language()
+    
+    if language not in VERB_TRANSLATIONS:
+        language = 'ru'  # Fallback на русский
+    
+    return VERB_TRANSLATIONS[language].get(verb, verb)
+
 def get_grammar_rule(tense: str, language: str = 'ru') -> dict:
     """
     Получить правило грамматики для времени
@@ -641,18 +492,15 @@ def get_available_languages() -> dict:
 
 def get_current_language() -> str:
     """Получить текущий язык из session_state"""
-    import streamlit as st
     return st.session_state.get('interface_language', 'ru')
 
 def set_language(language_code: str):
     """Установить язык интерфейса"""
-    import streamlit as st
     if language_code in get_available_languages():
         st.session_state.interface_language = language_code
     else:
         st.session_state.interface_language = 'ru'
 
-# Сокращенная функция для удобства
 def t(key: str, language: str = None) -> str:
     """Сокращенная функция перевода"""
     if language is None:
