@@ -593,7 +593,7 @@ def show_verb_card():
         next_card()
         return
     
-   # старый вариант verb_info = VERBS[card.verb]
+   
     verb_translation = get_verb_translation(card.verb)
     is_revealed = st.session_state.is_revealed
     
@@ -603,7 +603,7 @@ def show_verb_card():
         st.markdown(f"""
         <div class="verb-card">
             <div class="verb-title">{card.verb}</div>
-            # old variant <div class="verb-translation">{verb_info['translation']}</div>
+            
             <div class="verb-translation">{verb_translation}</div>
             <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
                 {t(card.tense)}
@@ -611,7 +611,9 @@ def show_verb_card():
             <div class="pronoun-display">
                 {PRONOUNS[card.pronoun_index]}
             </div>
-            <div class="click-hint">
+            
+hint">
+
                 {t('click_to_reveal')}
             </div>
         </div>
@@ -630,7 +632,7 @@ def show_verb_card():
         st.markdown(f"""
         <div class="verb-card revealed">
             <div class="verb-title">{card.verb}</div>
-            <div class="verb-translation">{verb_info['translation']}</div>
+            <div class="verb-translation">{verb_translation}</div>
             <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
                 {t(card.tense)}
             </div>
