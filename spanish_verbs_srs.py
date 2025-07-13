@@ -609,7 +609,7 @@ def show_verb_card():
                 {PRONOUNS[card.pronoun_index]}
             </div>
             
-hint">
+
 
                 {t('click_to_reveal')}
             </div>
