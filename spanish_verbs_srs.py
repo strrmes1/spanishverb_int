@@ -688,12 +688,7 @@ def show_study_tips():
         - {t('srs_before_forget')}
         - {t('srs_increasing_intervals')}
         - {t('srs_more_frequent')}
-        
-        **{t('honest_self_evaluation')}**
-        - **{t('again')}** - {t('again_help').lower()}
-        - **{t('hard')}** - {t('hard_help').lower()}
-        - **{t('good')}** - {t('good_help').lower()}
-        - **{t('easy')}** - {t('easy_help').lower()}
+        - **{t('honest_self_evaluation')}**
         """)
     
     with st.expander(t('daily_practice')):
