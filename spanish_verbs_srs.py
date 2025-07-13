@@ -612,7 +612,7 @@ def show_verb_card():
 
 
                 {t('click_to_reveal')}
-            </div>
+            
         </div>
         """, unsafe_allow_html=True)
         
