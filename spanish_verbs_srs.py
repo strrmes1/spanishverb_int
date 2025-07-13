@@ -582,62 +582,76 @@ def show_sidebar_content():
     st.metric(t('total_cards'), total_cards)
     st.metric(t('accuracy'), f"{accuracy:.1f}%")
 
-def show_verb_card():
-    """Показывает карточку глагола с поддержкой языков"""
-    card = st.session_state.current_card
+ def speak_btn(text, size="35px"):
+        return f'''
+        <button onclick="speak('{text}')" style="
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 50%;
+            width: {size};
+            height: {size};
+            margin-left: 8px;
+            cursor: pointer;
+            color: white;
+            vertical-align: middle;
+        ">🔊</button>
+        '''
     
-    if (card.verb not in VERBS or 
-        card.tense not in CONJUGATIONS or 
-        card.verb not in CONJUGATIONS[card.tense]):
-        st.error(t('card_data_corrupted'))
-        next_card()
-        return
-    
-    verb_translation = get_verb_translation(card.verb)
-    is_revealed = st.session_state.is_revealed
-    
-   # Отображаем карточку
     if not is_revealed:
         st.markdown(f"""
         <div class="verb-card">
-            <div class="verb-title">{card.verb}</div>
+            <div class="verb-title">
+                {card.verb} {speak_btn(card.verb, "40px")}
+            </div>
             <div class="verb-translation">{verb_translation}</div>
             <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
                 {t(card.tense)}
             </div>
             <div class="pronoun-display">
-                {PRONOUNS[card.pronoun_index]}
+                {PRONOUNS[card.pronoun_index]} {speak_btn(PRONOUNS[card.pronoun_index])}
             </div>
             
-
+hint">
 
                 {t('click_to_reveal')}
-            
+            </div>
         </div>
         """, unsafe_allow_html=True)
         
-        # Кнопка для показа ответа
         col1, col2, col3 = st.columns([1, 3, 1])
         with col2:
             if st.button(t('show_answer'), type="primary", use_container_width=True):
                 st.session_state.is_revealed = True
                 st.rerun()
     else:
-        # Показываем ответ
         conjugation = CONJUGATIONS[card.tense][card.verb][card.pronoun_index]
+        full_phrase = f"{PRONOUNS[card.pronoun_index]} {conjugation}"
         
         st.markdown(f"""
         <div class="verb-card revealed">
-            <div class="verb-title">{card.verb}</div>
+            <div class="verb-title">
+                {card.verb} {speak_btn(card.verb, "40px")}
+            </div>
             <div class="verb-translation">{verb_translation}</div>
             <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
                 {t(card.tense)}
             </div>
             <div class="pronoun-display">
-                {PRONOUNS[card.pronoun_index]}
+                {PRONOUNS[card.pronoun_index]} {speak_btn(PRONOUNS[card.pronoun_index])}
             </div>
             <div class="answer-display">
-                ✓ {conjugation}
+                ✓ {conjugation} {speak_btn(conjugation)}
+                <br>
+                <button onclick="speak('{full_phrase}')" style="
+                    background: rgba(45, 94, 62, 0.2);
+                    border: 1px solid rgba(45, 94, 62, 0.5);
+                    border-radius: 20px;
+                    padding: 8px 16px;
+                    margin-top: 10px;
+                    cursor: pointer;
+                    color: #2d5e3e;
+                    font-size: 0.9rem;
+                ">🔊 Произнести фразу</button>
             </div>
         </div>
         """, unsafe_allow_html=True)
