@@ -582,7 +582,7 @@ def show_sidebar_content():
     st.metric(t('total_cards'), total_cards)
     st.metric(t('accuracy'), f"{accuracy:.1f}%")
 
- def speak_btn(text, size="35px"):
+    def speak_btn(text, size="35px"):
         return f'''
         <button onclick="speak('{text}')" style="
             background: rgba(255,255,255,0.2);
