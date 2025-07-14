@@ -1,4 +1,4 @@
-# main.py - Основной файл с интеграцией локализации
+# main.py - Основной файл с интеграцией локализации и произношения
 
 import streamlit as st
 import os
@@ -77,6 +77,10 @@ st.markdown("""
         font-size: 3.5rem;
         font-weight: bold;
         margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
     }
     
     .verb-translation {
@@ -92,7 +96,9 @@ st.markdown("""
         background: rgba(255,255,255,0.2);
         padding: 1rem 2rem;
         border-radius: 0.5rem;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.8rem;
     }
     
     .answer-display {
@@ -103,7 +109,9 @@ st.markdown("""
         padding: 1.5rem 2rem;
         border-radius: 0.5rem;
         margin: 1.5rem 0;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.8rem;
     }
     
     .user-panel {
@@ -121,6 +129,41 @@ st.markdown("""
         animation: pulse-gentle 2s infinite;
     }
     
+    .pronunciation-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        transition: all 0.3s ease;
+    }
+    
+    .pronunciation-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.1);
+    }
+    
+    .pronunciation-btn.large {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+    
+    .pronunciation-btn.answer {
+        background: rgba(45, 94, 62, 0.3);
+        color: #2d5e3e;
+    }
+    
+    .pronunciation-btn.answer:hover {
+        background: rgba(45, 94, 62, 0.5);
+    }
+    
     @keyframes pulse-gentle {
         0% { opacity: 0.6; }
         50% { opacity: 1; }
@@ -128,6 +171,65 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# JavaScript для произношения
+def add_pronunciation_js():
+    """Добавляет JavaScript функции для произношения"""
+    st.markdown("""
+    <script>
+    // Функция произношения текста
+    function speakText(text, rate = 1.0, lang = 'es-ES') {
+        // Проверяем поддержку браузером
+        if (!('speechSynthesis' in window)) {
+            console.warn('Speech synthesis not supported');
+            return;
+        }
+        
+        // Останавливаем предыдущее произношение
+        window.speechSynthesis.cancel();
+        
+        // Создаем utterance
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = lang;
+        utterance.rate = rate;
+        utterance.volume = 0.8;
+        utterance.pitch = 1.0;
+        
+        // Пытаемся найти испанский голос
+        const voices = window.speechSynthesis.getVoices();
+        const spanishVoice = voices.find(voice => 
+            voice.lang.startsWith('es') || 
+            voice.name.toLowerCase().includes('spanish') ||
+            voice.name.toLowerCase().includes('español')
+        );
+        
+        if (spanishVoice) {
+            utterance.voice = spanishVoice;
+        }
+        
+        // Произносим
+        window.speechSynthesis.speak(utterance);
+    }
+    
+    // Функция для кнопок произношения
+    function handlePronunciation(text, rate = 1.0) {
+        speakText(text, rate, 'es-ES');
+        
+        // Визуальная обратная связь
+        event.target.style.transform = 'scale(0.9)';
+        setTimeout(() => {
+            event.target.style.transform = 'scale(1)';
+        }, 150);
+    }
+    
+    // Загружаем голоса при готовности
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = function() {
+            // Голоса загружены
+        };
+    }
+    </script>
+    """, unsafe_allow_html=True)
 
 # Перечисления для SRS
 class Difficulty(Enum):
@@ -349,6 +451,21 @@ class SRSManager:
         
         return card
 
+def create_pronunciation_button(text: str, size: str = "normal", btn_class: str = "") -> str:
+    """Создает HTML кнопку произношения"""
+    size_class = f" {size}" if size != "normal" else ""
+    additional_class = f" {btn_class}" if btn_class else ""
+    
+    return f"""
+    <button 
+        class="pronunciation-btn{size_class}{additional_class}" 
+        onclick="handlePronunciation('{text}', {st.session_state.pronunciation_settings.get('speech_rate', 1.0)})"
+        title="{t('pronounce')}: {text}"
+    >
+        🔊
+    </button>
+    """
+
 def show_language_selector():
     """Показывает селектор языка в сайдбаре"""
     st.markdown("### " + t('language'))
@@ -371,8 +488,56 @@ def show_language_selector():
         set_language(selected_language)
         st.rerun()
 
+def show_pronunciation_settings():
+    """Показывает настройки произношения в сайдбаре"""
+    st.markdown("---")
+    st.markdown("### " + t('pronunciation_settings'))
+    
+    # Главный переключатель произношения
+    pronunciation_enabled = st.checkbox(
+        t('enable_pronunciation'), 
+        value=st.session_state.pronunciation_settings.get('enabled', True),
+        key="pronunciation_enabled"
+    )
+    st.session_state.pronunciation_settings['enabled'] = pronunciation_enabled
+    
+    if pronunciation_enabled:
+        # Автоматическое произношение ответов
+        auto_pronounce = st.checkbox(
+            t('auto_pronounce_answers'),
+            value=st.session_state.pronunciation_settings.get('auto_pronounce', False),
+            key="auto_pronounce"
+        )
+        st.session_state.pronunciation_settings['auto_pronounce'] = auto_pronounce
+        
+        # Скорость речи
+        speech_rate = st.slider(
+            t('speech_rate'),
+            min_value=0.5,
+            max_value=1.5,
+            value=st.session_state.pronunciation_settings.get('speech_rate', 1.0),
+            step=0.1,
+            key="speech_rate"
+        )
+        st.session_state.pronunciation_settings['speech_rate'] = speech_rate
+        
+        # Тестовая кнопка
+        if st.button(t('test_pronunciation'), key="test_pronunciation"):
+            test_text = "Hola, soy estudiante"
+            st.markdown(f"""
+            <script>
+            setTimeout(() => {{
+                speakText('{test_text}', {speech_rate}, 'es-ES');
+            }}, 100);
+            </script>
+            """, unsafe_allow_html=True)
+            st.success(f"{t('testing_pronunciation')}: '{test_text}'")
+
 def show_welcome_page():
     """Показывает страницу приветствия с поддержкой языков"""
+    
+    # Добавляем JavaScript для произношения
+    add_pronunciation_js()
     
     # Селектор языка в верхней части
     col1, col2, col3 = st.columns([2, 1, 2])
@@ -412,8 +577,8 @@ def show_welcome_page():
     with col3:
         st.markdown(f"""
         <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border-radius: 1rem; margin: 1rem 0; height: 200px; display: flex; flex-direction: column; justify-content: center;">
-            <h3>{t('cloud_sync')}</h3>
-            <p>{t('cloud_sync_desc')}</p>
+            <h3>{t('pronunciation_feature')}</h3>
+            <p>{t('pronunciation_feature_desc')}</p>
         </div>
         """, unsafe_allow_html=True)
     
@@ -462,6 +627,9 @@ def show_welcome_page():
 
 def show_main_app():
     """Показывает основное приложение с поддержкой языков"""
+    # Добавляем JavaScript для произношения
+    add_pronunciation_js()
+    
     reset_daily_stats()
     
     user_info = st.session_state.user_info
@@ -505,6 +673,10 @@ def show_sidebar_content():
     
     # Селектор языка
     show_language_selector()
+    
+    # Настройки произношения
+    show_pronunciation_settings()
+    
     st.markdown("---")
     
     # Настройки
@@ -582,103 +754,114 @@ def show_sidebar_content():
     st.metric(t('total_cards'), total_cards)
     st.metric(t('accuracy'), f"{accuracy:.1f}%")
 
-    def speak_btn(text, size="35px"):
-        return f'''
-        <button onclick="speak('{text}')" style="
-            background: rgba(255,255,255,0.2);
-            border: none;
-            border-radius: 50%;
-            width: {size};
-            height: {size};
-            margin-left: 8px;
-            cursor: pointer;
-            color: white;
-            vertical-align: middle;
-        ">🔊</button>
-        '''
-            # Добавить JavaScript для произношения
-    speech_js = """
-    <script>
-    function speak(text) {
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'es-ES';
-        utterance.rate = 0.8;
-        window.speechSynthesis.speak(utterance);
-     }
-    }
-    </script>
-    """
-    st.components.v1.html(speech_js, height=0)
-
+def show_verb_card():
+    """Показывает карточку глагола с поддержкой языков и произношения"""
+    card = st.session_state.current_card
+    
+    if (card.verb not in VERBS or 
+        card.tense not in CONJUGATIONS or 
+        card.verb not in CONJUGATIONS[card.tense]):
+        st.error(t('card_data_corrupted'))
+        next_card()
+        return
+    
+    verb_translation = get_verb_translation(card.verb)
+    is_revealed = st.session_state.is_revealed
+    pronunciation_enabled = st.session_state.pronunciation_settings.get('enabled', True)
+    
+    # Отображаем карточку
     if not is_revealed:
+        # Кнопка произношения для глагола
+        verb_pronunciation = create_pronunciation_button(card.verb, "large") if pronunciation_enabled else ""
+        
+        # Кнопка произношения для местоимения
+        pronoun_pronunciation = create_pronunciation_button(PRONOUNS[card.pronoun_index]) if pronunciation_enabled else ""
+        
         st.markdown(f"""
         <div class="verb-card">
             <div class="verb-title">
-                {card.verb} {speak_btn(card.verb, "40px")}
+                {card.verb}
+                {verb_pronunciation}
             </div>
             <div class="verb-translation">{verb_translation}</div>
             <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
                 {t(card.tense)}
             </div>
             <div class="pronoun-display">
-        {PRONOUNS[card.pronoun_index]}
-        <button onclick="speak('{PRONOUNS[card.pronoun_index]}')" style="
-            background: rgba(255,255,255,0.2);
-            border: none;
-            border-radius: 50%;
-            width: 35px;
-            height: 35px;
-            margin-left: 8px;
-            cursor: pointer;
-            color: white;
-        ">🔊</button>
+                {PRONOUNS[card.pronoun_index]}
+                {pronoun_pronunciation}
             </div>
-            
-
-
+            <div class="click-hint">
                 {t('click_to_reveal')}
             </div>
         </div>
         """, unsafe_allow_html=True)
         
+        # Кнопка для показа ответа
         col1, col2, col3 = st.columns([1, 3, 1])
         with col2:
             if st.button(t('show_answer'), type="primary", use_container_width=True):
                 st.session_state.is_revealed = True
                 st.rerun()
     else:
+        # Показываем ответ
         conjugation = CONJUGATIONS[card.tense][card.verb][card.pronoun_index]
-        full_phrase = f"{PRONOUNS[card.pronoun_index]} {conjugation}
-    <button onclick="speak('{conjugation}')" style="
-        background: rgba(45, 94, 62, 0.3);
-        border: none;
-        border-radius: 50%;
-        width: 35px;
-        height: 35px;
-        margin-left: 8px;
-        cursor: pointer;
-        color: #2d5e3e;
-    ">🔊</button>"
+        
+        # Кнопки произношения
+        verb_pronunciation = create_pronunciation_button(card.verb, "large") if pronunciation_enabled else ""
+        pronoun_pronunciation = create_pronunciation_button(PRONOUNS[card.pronoun_index]) if pronunciation_enabled else ""
+        answer_pronunciation = create_pronunciation_button(conjugation, "normal", "answer") if pronunciation_enabled else ""
         
         st.markdown(f"""
         <div class="verb-card revealed">
             <div class="verb-title">
-        {card.verb}
-        <button onclick="speak('{card.verb}')" style="
-            background: rgba(255,255,255,0.2);
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            margin-left: 8px;
-            cursor: pointer;
-            color: white;
-        ">🔊</button>
-    </div>
+                {card.verb}
+                {verb_pronunciation}
+            </div>
+            <div class="verb-translation">{verb_translation}</div>
+            <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
+                {t(card.tense)}
+            </div>
+            <div class="pronoun-display">
+                {PRONOUNS[card.pronoun_index]}
+                {pronoun_pronunciation}
+            </div>
+            <div class="answer-display">
+                ✅ {conjugation}
+                {answer_pronunciation}
+            </div>
         </div>
         """, unsafe_allow_html=True)
+        
+        # Автоматическое произношение ответа
+        if (pronunciation_enabled and 
+            st.session_state.pronunciation_settings.get('auto_pronounce', False)):
+            speech_rate = st.session_state.pronunciation_settings.get('speech_rate', 1.0)
+            st.markdown(f"""
+            <script>
+            setTimeout(() => {{
+                speakText('{conjugation}', {speech_rate}, 'es-ES');
+            }}, 500);
+            </script>
+            """, unsafe_allow_html=True)
+        
+        # Кнопка произношения полной фразы
+        if pronunciation_enabled:
+            full_phrase = f"{PRONOUNS[card.pronoun_index]} {conjugation}"
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.markdown(f"""
+                <div style="text-align: center; margin: 1rem 0;">
+                    <button 
+                        class="pronunciation-btn" 
+                        onclick="handlePronunciation('{full_phrase}', {st.session_state.pronunciation_settings.get('speech_rate', 1.0)})"
+                        style="background: rgba(72, 202, 139, 0.2); color: #2d5e3e; padding: 0.8rem 1.5rem; border-radius: 25px; font-size: 1rem; font-weight: bold;"
+                        title="{t('pronounce_full_phrase')}"
+                    >
+                        🔊 {t('pronounce_full_phrase')}
+                    </button>
+                </div>
+                """, unsafe_allow_html=True)
         
         # Кнопки оценки сложности
         st.subheader(t('rate_difficulty'))
@@ -739,6 +922,15 @@ def show_study_tips():
         **{t('optimal_settings')}**
         - {t('beginners_settings')}
         - {t('advanced_settings')}
+        """)
+    
+    with st.expander(t('pronunciation_tips')):
+        st.markdown(f"""
+        **{t('pronunciation_tips_text')}**
+        - {t('pronunciation_tip_1')}
+        - {t('pronunciation_tip_2')}
+        - {t('pronunciation_tip_3')}
+        - {t('pronunciation_tip_4')}
         """)
 
 def show_learning_interface():
@@ -821,6 +1013,14 @@ def init_session_state():
     if 'interface_language' not in st.session_state:
         st.session_state.interface_language = 'ru'
     
+    # Настройки произношения
+    if 'pronunciation_settings' not in st.session_state:
+        st.session_state.pronunciation_settings = {
+            'enabled': True,
+            'auto_pronounce': False,
+            'speech_rate': 1.0
+        }
+    
     # Состояние приложения
     if 'cards' not in st.session_state:
         st.session_state.cards = {}
@@ -845,9 +1045,7 @@ def init_session_state():
     if 'recent_combinations' not in st.session_state:
         st.session_state.recent_combinations = []
 
-# Также нужно добавить все остальные функции, которые были в оригинальном коде:
-# process_authorization_code, exchange_code_for_token, get_user_info, etc.
-
+# Остальные функции остаются без изменений
 def validate_state_format(state):
     """Проверяет формат state"""
     try:
