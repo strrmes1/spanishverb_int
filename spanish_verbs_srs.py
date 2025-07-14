@@ -596,7 +596,22 @@ def show_sidebar_content():
             vertical-align: middle;
         ">🔊</button>
         '''
-    
+            # Добавить JavaScript для произношения
+    speech_js = """
+    <script>
+    function speak(text) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'es-ES';
+        utterance.rate = 0.8;
+        window.speechSynthesis.speak(utterance);
+     }
+    }
+    </script>
+    """
+    st.components.v1.html(speech_js, height=0)
+
     if not is_revealed:
         st.markdown(f"""
         <div class="verb-card">
@@ -608,10 +623,20 @@ def show_sidebar_content():
                 {t(card.tense)}
             </div>
             <div class="pronoun-display">
-                {PRONOUNS[card.pronoun_index]} {speak_btn(PRONOUNS[card.pronoun_index])}
+        {PRONOUNS[card.pronoun_index]}
+        <button onclick="speak('{PRONOUNS[card.pronoun_index]}')" style="
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            margin-left: 8px;
+            cursor: pointer;
+            color: white;
+        ">🔊</button>
             </div>
             
-hint">
+
 
                 {t('click_to_reveal')}
             </div>
@@ -625,34 +650,33 @@ hint">
                 st.rerun()
     else:
         conjugation = CONJUGATIONS[card.tense][card.verb][card.pronoun_index]
-        full_phrase = f"{PRONOUNS[card.pronoun_index]} {conjugation}"
+        full_phrase = f"{PRONOUNS[card.pronoun_index]} {conjugation}
+    <button onclick="speak('{conjugation}')" style="
+        background: rgba(45, 94, 62, 0.3);
+        border: none;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        margin-left: 8px;
+        cursor: pointer;
+        color: #2d5e3e;
+    ">🔊</button>"
         
         st.markdown(f"""
         <div class="verb-card revealed">
             <div class="verb-title">
-                {card.verb} {speak_btn(card.verb, "40px")}
-            </div>
-            <div class="verb-translation">{verb_translation}</div>
-            <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
-                {t(card.tense)}
-            </div>
-            <div class="pronoun-display">
-                {PRONOUNS[card.pronoun_index]} {speak_btn(PRONOUNS[card.pronoun_index])}
-            </div>
-            <div class="answer-display">
-                ✓ {conjugation} {speak_btn(conjugation)}
-                <br>
-                <button onclick="speak('{full_phrase}')" style="
-                    background: rgba(45, 94, 62, 0.2);
-                    border: 1px solid rgba(45, 94, 62, 0.5);
-                    border-radius: 20px;
-                    padding: 8px 16px;
-                    margin-top: 10px;
-                    cursor: pointer;
-                    color: #2d5e3e;
-                    font-size: 0.9rem;
-                ">🔊 Произнести фразу</button>
-            </div>
+        {card.verb}
+        <button onclick="speak('{card.verb}')" style="
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            margin-left: 8px;
+            cursor: pointer;
+            color: white;
+        ">🔊</button>
+    </div>
         </div>
         """, unsafe_allow_html=True)
         
