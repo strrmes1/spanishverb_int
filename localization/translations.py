@@ -1,6 +1,6 @@
 # localization/translations.py
 """
-Полный файл с переводами для всех языков с поддержкой произношения
+Полный файл с переводами для всех языков (исправленная версия)
 """
 
 import streamlit as st
@@ -27,24 +27,6 @@ TRANSLATIONS = {
         'next_verb': '➡️ Следующий глагол',
         'get_new_card': '🔄 Получить новую карточку',
         'click_to_reveal': '🔍 Нажмите на кнопку, чтобы увидеть ответ',
-        
-        # Произношение
-        'pronunciation_settings': '🔊 Настройки произношения',
-        'enable_pronunciation': 'Включить произношение',
-        'auto_pronounce_answers': 'Автоматически произносить ответы',
-        'speech_rate': 'Скорость речи',
-        'test_pronunciation': '🔊 Тест произношения',
-        'testing_pronunciation': 'Тестирую произношение',
-        'pronounce': 'Произнести',
-        'pronounce_full_phrase': '🔊 Произнести фразу целиком',
-        'pronunciation_feature': '🔊 Произношение',
-        'pronunciation_feature_desc': 'Слушайте правильное произношение каждого глагола и местоимения',
-        'pronunciation_tips': '🔊 Советы по произношению',
-        'pronunciation_tips_text': 'Как лучше использовать произношение:',
-        'pronunciation_tip_1': '**Слушайте внимательно** - обращайте внимание на ударения и интонацию',
-        'pronunciation_tip_2': '**Повторяйте вслух** - говорите вместе с озвучкой для лучшего запоминания',
-        'pronunciation_tip_3': '**Настройте скорость** - начните с медленной скорости и постепенно увеличивайте',
-        'pronunciation_tip_4': '**Используйте фразы целиком** - это поможет понять естественный ритм речи',
         
         # Оценка сложности
         'rate_difficulty': '🎯 Как хорошо вы знали ответ?',
@@ -141,24 +123,6 @@ TRANSLATIONS = {
         'next_verb': '➡️ Next verb',
         'get_new_card': '🔄 Get new card',
         'click_to_reveal': '🔍 Click the button to see the answer',
-        
-        # Pronunciation
-        'pronunciation_settings': '🔊 Pronunciation Settings',
-        'enable_pronunciation': 'Enable pronunciation',
-        'auto_pronounce_answers': 'Auto-pronounce answers',
-        'speech_rate': 'Speech rate',
-        'test_pronunciation': '🔊 Test pronunciation',
-        'testing_pronunciation': 'Testing pronunciation',
-        'pronounce': 'Pronounce',
-        'pronounce_full_phrase': '🔊 Pronounce full phrase',
-        'pronunciation_feature': '🔊 Pronunciation',
-        'pronunciation_feature_desc': 'Listen to correct pronunciation of every verb and pronoun',
-        'pronunciation_tips': '🔊 Pronunciation tips',
-        'pronunciation_tips_text': 'How to best use pronunciation:',
-        'pronunciation_tip_1': '**Listen carefully** - pay attention to stress and intonation',
-        'pronunciation_tip_2': '**Repeat aloud** - speak along with the audio for better retention',
-        'pronunciation_tip_3': '**Adjust speed** - start slow and gradually increase speed',
-        'pronunciation_tip_4': '**Use full phrases** - this helps understand natural speech rhythm',
         
         # Difficulty rating
         'rate_difficulty': '🎯 How well did you know the answer?',
