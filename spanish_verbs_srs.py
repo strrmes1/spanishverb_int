@@ -77,10 +77,6 @@ st.markdown("""
         font-size: 3.5rem;
         font-weight: bold;
         margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 1rem;
     }
     
     .verb-translation {
@@ -96,9 +92,7 @@ st.markdown("""
         background: rgba(255,255,255,0.2);
         padding: 1rem 2rem;
         border-radius: 0.5rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.8rem;
+        display: inline-block;
     }
     
     .answer-display {
@@ -109,9 +103,7 @@ st.markdown("""
         padding: 1.5rem 2rem;
         border-radius: 0.5rem;
         margin: 1.5rem 0;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.8rem;
+        display: inline-block;
     }
     
     .user-panel {
@@ -131,32 +123,25 @@ st.markdown("""
     
     .pronunciation-btn {
         background: rgba(255, 255, 255, 0.2);
-        border: none;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        padding: 8px 12px;
         color: white;
         cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         font-size: 1.2rem;
         transition: all 0.3s ease;
+        margin: 0 8px;
+        display: inline-block;
     }
     
     .pronunciation-btn:hover {
         background: rgba(255, 255, 255, 0.3);
-        transform: scale(1.1);
-    }
-    
-    .pronunciation-btn.large {
-        width: 50px;
-        height: 50px;
-        font-size: 1.5rem;
+        transform: scale(1.05);
     }
     
     .pronunciation-btn.answer {
         background: rgba(45, 94, 62, 0.3);
+        border-color: rgba(45, 94, 62, 0.5);
         color: #2d5e3e;
     }
     
@@ -171,65 +156,6 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
-# JavaScript для произношения
-def add_pronunciation_js():
-    """Добавляет JavaScript функции для произношения"""
-    st.markdown("""
-    <script>
-    // Функция произношения текста
-    function speakText(text, rate = 1.0, lang = 'es-ES') {
-        // Проверяем поддержку браузером
-        if (!('speechSynthesis' in window)) {
-            console.warn('Speech synthesis not supported');
-            return;
-        }
-        
-        // Останавливаем предыдущее произношение
-        window.speechSynthesis.cancel();
-        
-        // Создаем utterance
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = lang;
-        utterance.rate = rate;
-        utterance.volume = 0.8;
-        utterance.pitch = 1.0;
-        
-        // Пытаемся найти испанский голос
-        const voices = window.speechSynthesis.getVoices();
-        const spanishVoice = voices.find(voice => 
-            voice.lang.startsWith('es') || 
-            voice.name.toLowerCase().includes('spanish') ||
-            voice.name.toLowerCase().includes('español')
-        );
-        
-        if (spanishVoice) {
-            utterance.voice = spanishVoice;
-        }
-        
-        // Произносим
-        window.speechSynthesis.speak(utterance);
-    }
-    
-    // Функция для кнопок произношения
-    function handlePronunciation(text, rate = 1.0) {
-        speakText(text, rate, 'es-ES');
-        
-        // Визуальная обратная связь
-        event.target.style.transform = 'scale(0.9)';
-        setTimeout(() => {
-            event.target.style.transform = 'scale(1)';
-        }, 150);
-    }
-    
-    // Загружаем голоса при готовности
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.onvoiceschanged = function() {
-            // Голоса загружены
-        };
-    }
-    </script>
-    """, unsafe_allow_html=True)
 
 # Перечисления для SRS
 class Difficulty(Enum):
@@ -451,20 +377,55 @@ class SRSManager:
         
         return card
 
-def create_pronunciation_button(text: str, size: str = "normal", btn_class: str = "") -> str:
-    """Создает HTML кнопку произношения"""
-    size_class = f" {size}" if size != "normal" else ""
-    additional_class = f" {btn_class}" if btn_class else ""
+def add_pronunciation_javascript():
+    """Добавляет JavaScript для произношения один раз"""
+    st.markdown("""
+    <script>
+    // Глобальная функция произношения
+    window.speakSpanish = function(text, rate = 1.0) {
+        try {
+            if (!window.speechSynthesis) {
+                console.warn('Speech synthesis not supported');
+                return;
+            }
+            
+            // Останавливаем предыдущее произношение
+            window.speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'es-ES';
+            utterance.rate = rate;
+            utterance.volume = 0.8;
+            utterance.pitch = 1.0;
+            
+            // Ищем испанский голос
+            const voices = window.speechSynthesis.getVoices();
+            const spanishVoice = voices.find(v => 
+                v.lang.startsWith('es') || 
+                v.name.toLowerCase().includes('spanish') ||
+                v.name.toLowerCase().includes('español')
+            );
+            
+            if (spanishVoice) {
+                utterance.voice = spanishVoice;
+            }
+            
+            window.speechSynthesis.speak(utterance);
+        } catch (error) {
+            console.error('Speech error:', error);
+        }
+    };
     
-    return f"""
-    <button 
-        class="pronunciation-btn{size_class}{additional_class}" 
-        onclick="handlePronunciation('{text}', {st.session_state.pronunciation_settings.get('speech_rate', 1.0)})"
-        title="{t('pronounce')}: {text}"
-    >
-        🔊
-    </button>
-    """
+    // Инициализация голосов
+    if (window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = function() {
+            // Голоса загружены
+        };
+        // Принудительная загрузка голосов
+        window.speechSynthesis.getVoices();
+    }
+    </script>
+    """, unsafe_allow_html=True)
 
 def show_language_selector():
     """Показывает селектор языка в сайдбаре"""
@@ -521,23 +482,42 @@ def show_pronunciation_settings():
         )
         st.session_state.pronunciation_settings['speech_rate'] = speech_rate
         
-        # Тестовая кнопка
+        # Тестовая кнопка произношения
         if st.button(t('test_pronunciation'), key="test_pronunciation"):
-            test_text = "Hola, soy estudiante"
+            test_text = "Hola, mi nombre es Pedro"
             st.markdown(f"""
             <script>
-            setTimeout(() => {{
-                speakText('{test_text}', {speech_rate}, 'es-ES');
-            }}, 100);
+            setTimeout(function() {{
+                if (window.speakSpanish) {{
+                    window.speakSpanish('{test_text}', {speech_rate});
+                }}
+            }}, 200);
             </script>
             """, unsafe_allow_html=True)
             st.success(f"{t('testing_pronunciation')}: '{test_text}'")
+
+def create_pronunciation_button(text: str, btn_id: str, btn_class: str = "") -> str:
+    """Создает простую кнопку произношения с уникальным ID"""
+    speech_rate = st.session_state.pronunciation_settings.get('speech_rate', 1.0)
+    additional_class = f" {btn_class}" if btn_class else ""
+    
+    return f"""
+    <button 
+        id="{btn_id}"
+        class="pronunciation-btn{additional_class}" 
+        onclick="if(window.speakSpanish) window.speakSpanish('{text}', {speech_rate})"
+        title="{t('pronounce')}: {text}"
+        type="button"
+    >
+        🔊
+    </button>
+    """
 
 def show_welcome_page():
     """Показывает страницу приветствия с поддержкой языков"""
     
     # Добавляем JavaScript для произношения
-    add_pronunciation_js()
+    add_pronunciation_javascript()
     
     # Селектор языка в верхней части
     col1, col2, col3 = st.columns([2, 1, 2])
@@ -628,7 +608,7 @@ def show_welcome_page():
 def show_main_app():
     """Показывает основное приложение с поддержкой языков"""
     # Добавляем JavaScript для произношения
-    add_pronunciation_js()
+    add_pronunciation_javascript()
     
     reset_daily_stats()
     
@@ -771,17 +751,10 @@ def show_verb_card():
     
     # Отображаем карточку
     if not is_revealed:
-        # Кнопка произношения для глагола
-        verb_pronunciation = create_pronunciation_button(card.verb, "large") if pronunciation_enabled else ""
-        
-        # Кнопка произношения для местоимения
-        pronoun_pronunciation = create_pronunciation_button(PRONOUNS[card.pronoun_index]) if pronunciation_enabled else ""
-        
         st.markdown(f"""
         <div class="verb-card">
             <div class="verb-title">
                 {card.verb}
-                {verb_pronunciation}
             </div>
             <div class="verb-translation">{verb_translation}</div>
             <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
@@ -789,13 +762,39 @@ def show_verb_card():
             </div>
             <div class="pronoun-display">
                 {PRONOUNS[card.pronoun_index]}
-                {pronoun_pronunciation}
             </div>
             <div class="click-hint">
                 {t('click_to_reveal')}
             </div>
         </div>
         """, unsafe_allow_html=True)
+        
+        # Кнопки произношения под карточкой
+        if pronunciation_enabled:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if st.button(f"🔊 {card.verb}", key="pronounce_verb"):
+                    st.markdown(f"""
+                    <script>
+                    setTimeout(function() {{
+                        if (window.speakSpanish) {{
+                            window.speakSpanish('{card.verb}', {st.session_state.pronunciation_settings.get('speech_rate', 1.0)});
+                        }}
+                    }}, 100);
+                    </script>
+                    """, unsafe_allow_html=True)
+            
+            with col2:
+                if st.button(f"🔊 {PRONOUNS[card.pronoun_index]}", key="pronounce_pronoun"):
+                    st.markdown(f"""
+                    <script>
+                    setTimeout(function() {{
+                        if (window.speakSpanish) {{
+                            window.speakSpanish('{PRONOUNS[card.pronoun_index]}', {st.session_state.pronunciation_settings.get('speech_rate', 1.0)});
+                        }}
+                    }}, 100);
+                    </script>
+                    """, unsafe_allow_html=True)
         
         # Кнопка для показа ответа
         col1, col2, col3 = st.columns([1, 3, 1])
@@ -807,16 +806,10 @@ def show_verb_card():
         # Показываем ответ
         conjugation = CONJUGATIONS[card.tense][card.verb][card.pronoun_index]
         
-        # Кнопки произношения
-        verb_pronunciation = create_pronunciation_button(card.verb, "large") if pronunciation_enabled else ""
-        pronoun_pronunciation = create_pronunciation_button(PRONOUNS[card.pronoun_index]) if pronunciation_enabled else ""
-        answer_pronunciation = create_pronunciation_button(conjugation, "normal", "answer") if pronunciation_enabled else ""
-        
         st.markdown(f"""
         <div class="verb-card revealed">
             <div class="verb-title">
                 {card.verb}
-                {verb_pronunciation}
             </div>
             <div class="verb-translation">{verb_translation}</div>
             <div style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 1rem;">
@@ -824,11 +817,9 @@ def show_verb_card():
             </div>
             <div class="pronoun-display">
                 {PRONOUNS[card.pronoun_index]}
-                {pronoun_pronunciation}
             </div>
             <div class="answer-display">
                 ✅ {conjugation}
-                {answer_pronunciation}
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -839,29 +830,65 @@ def show_verb_card():
             speech_rate = st.session_state.pronunciation_settings.get('speech_rate', 1.0)
             st.markdown(f"""
             <script>
-            setTimeout(() => {{
-                speakText('{conjugation}', {speech_rate}, 'es-ES');
+            setTimeout(function() {{
+                if (window.speakSpanish) {{
+                    window.speakSpanish('{conjugation}', {speech_rate});
+                }}
             }}, 500);
             </script>
             """, unsafe_allow_html=True)
         
-        # Кнопка произношения полной фразы
+        # Кнопки произношения под карточкой
         if pronunciation_enabled:
-            full_phrase = f"{PRONOUNS[card.pronoun_index]} {conjugation}"
-            col1, col2, col3 = st.columns([1, 2, 1])
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                if st.button(f"🔊 {card.verb}", key="pronounce_verb_revealed"):
+                    st.markdown(f"""
+                    <script>
+                    setTimeout(function() {{
+                        if (window.speakSpanish) {{
+                            window.speakSpanish('{card.verb}', {st.session_state.pronunciation_settings.get('speech_rate', 1.0)});
+                        }}
+                    }}, 100);
+                    </script>
+                    """, unsafe_allow_html=True)
+            
             with col2:
-                st.markdown(f"""
-                <div style="text-align: center; margin: 1rem 0;">
-                    <button 
-                        class="pronunciation-btn" 
-                        onclick="handlePronunciation('{full_phrase}', {st.session_state.pronunciation_settings.get('speech_rate', 1.0)})"
-                        style="background: rgba(72, 202, 139, 0.2); color: #2d5e3e; padding: 0.8rem 1.5rem; border-radius: 25px; font-size: 1rem; font-weight: bold;"
-                        title="{t('pronounce_full_phrase')}"
-                    >
-                        🔊 {t('pronounce_full_phrase')}
-                    </button>
-                </div>
-                """, unsafe_allow_html=True)
+                if st.button(f"🔊 {PRONOUNS[card.pronoun_index]}", key="pronounce_pronoun_revealed"):
+                    st.markdown(f"""
+                    <script>
+                    setTimeout(function() {{
+                        if (window.speakSpanish) {{
+                            window.speakSpanish('{PRONOUNS[card.pronoun_index]}', {st.session_state.pronunciation_settings.get('speech_rate', 1.0)});
+                        }}
+                    }}, 100);
+                    </script>
+                    """, unsafe_allow_html=True)
+            
+            with col3:
+                if st.button(f"🔊 {conjugation}", key="pronounce_answer"):
+                    st.markdown(f"""
+                    <script>
+                    setTimeout(function() {{
+                        if (window.speakSpanish) {{
+                            window.speakSpanish('{conjugation}', {st.session_state.pronunciation_settings.get('speech_rate', 1.0)});
+                        }}
+                    }}, 100);
+                    </script>
+                    """, unsafe_allow_html=True)
+            
+            with col4:
+                full_phrase = f"{PRONOUNS[card.pronoun_index]} {conjugation}"
+                if st.button(f"🔊 {t('pronounce_full_phrase')}", key="pronounce_full"):
+                    st.markdown(f"""
+                    <script>
+                    setTimeout(function() {{
+                        if (window.speakSpanish) {{
+                            window.speakSpanish('{full_phrase}', {st.session_state.pronunciation_settings.get('speech_rate', 1.0)});
+                        }}
+                    }}, 100);
+                    </script>
+                    """, unsafe_allow_html=True)
         
         # Кнопки оценки сложности
         st.subheader(t('rate_difficulty'))
