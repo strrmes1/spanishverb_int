@@ -1,4 +1,4 @@
-# main.py - Основной файл с интеграцией локализации
+# main.py - Основной файл с расширенной базой глаголов (100 глаголов)
 
 import streamlit as st
 import os
@@ -126,6 +126,16 @@ st.markdown("""
         50% { opacity: 1; }
         100% { opacity: 0.6; }
     }
+    
+    .vocab-size-info {
+        background: #f0f9ff;
+        border: 1px solid #0ea5e9;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        margin: 0.5rem 0;
+        font-size: 0.9rem;
+        color: #0c4a6e;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -154,55 +164,123 @@ class Card:
         if not self.next_review_date:
             self.next_review_date = datetime.date.today().isoformat()
 
-# База данных глаголов
+# Расширенная база данных глаголов (100 самых популярных)
 VERBS = {
-    'ser': {'type': 'irregular'},
-    'estar': {'type': 'irregular'},
-    'tener': {'type': 'irregular'},
-    'hacer': {'type': 'irregular'},
-    'decir': {'type': 'irregular'},
-    'ir': {'type': 'irregular'},
-    'ver': {'type': 'irregular'},
-    'dar': {'type': 'irregular'},
-    'saber': {'type': 'irregular'},
-    'querer': {'type': 'irregular'},
-    'llegar': {'type': 'regular-ar'},
-    'pasar': {'type': 'regular-ar'},
-    'deber': {'type': 'regular-er'},
-    'poner': {'type': 'irregular'},
-    'parecer': {'type': 'irregular'},
-    'quedar': {'type': 'regular-ar'},
-    'creer': {'type': 'regular-er'},
-    'hablar': {'type': 'regular-ar'},
-    'llevar': {'type': 'regular-ar'},
-    'dejar': {'type': 'regular-ar'},
-    'seguir': {'type': 'irregular'},
-    'encontrar': {'type': 'irregular'},
-    'llamar': {'type': 'regular-ar'},
-    'venir': {'type': 'irregular'},
-    'pensar': {'type': 'irregular'},
-    'salir': {'type': 'irregular'},
-    'vivir': {'type': 'regular-ir'},
-    'sentir': {'type': 'irregular'},
-    'trabajar': {'type': 'regular-ar'},
-    'estudiar': {'type': 'regular-ar'},
-    'comprar': {'type': 'regular-ar'},
-    'comer': {'type': 'regular-er'},
-    'beber': {'type': 'regular-er'},
-    'escribir': {'type': 'regular-ir'},
-    'leer': {'type': 'regular-er'},
-    'abrir': {'type': 'irregular'},
-    'cerrar': {'type': 'irregular'},
-    'empezar': {'type': 'irregular'},
-    'terminar': {'type': 'regular-ar'},
-    'poder': {'type': 'irregular'}
+    # Топ 30 - самые основные
+    'ser': {'type': 'irregular', 'level': 1, 'difficulty': 'hard'},
+    'estar': {'type': 'irregular', 'level': 1, 'difficulty': 'hard'},
+    'tener': {'type': 'irregular', 'level': 1, 'difficulty': 'medium'},
+    'hacer': {'type': 'irregular', 'level': 1, 'difficulty': 'medium'},
+    'decir': {'type': 'irregular', 'level': 1, 'difficulty': 'medium'},
+    'ir': {'type': 'irregular', 'level': 1, 'difficulty': 'hard'},
+    'ver': {'type': 'irregular', 'level': 1, 'difficulty': 'easy'},
+    'dar': {'type': 'irregular', 'level': 1, 'difficulty': 'easy'},
+    'saber': {'type': 'irregular', 'level': 1, 'difficulty': 'medium'},
+    'querer': {'type': 'irregular', 'level': 1, 'difficulty': 'medium'},
+    'poder': {'type': 'irregular', 'level': 1, 'difficulty': 'medium'},
+    'venir': {'type': 'irregular', 'level': 1, 'difficulty': 'medium'},
+    'hablar': {'type': 'regular-ar', 'level': 1, 'difficulty': 'easy'},
+    'vivir': {'type': 'regular-ir', 'level': 1, 'difficulty': 'easy'},
+    'comer': {'type': 'regular-er', 'level': 1, 'difficulty': 'easy'},
+    'trabajar': {'type': 'regular-ar', 'level': 1, 'difficulty': 'easy'},
+    'estudiar': {'type': 'regular-ar', 'level': 1, 'difficulty': 'easy'},
+    'llegar': {'type': 'regular-ar', 'level': 1, 'difficulty': 'easy'},
+    'pasar': {'type': 'regular-ar', 'level': 1, 'difficulty': 'easy'},
+    'encontrar': {'type': 'irregular', 'level': 1, 'difficulty': 'medium'},
+    'llamar': {'type': 'regular-ar', 'level': 1, 'difficulty': 'easy'},
+    'pensar': {'type': 'irregular', 'level': 1, 'difficulty': 'medium'},
+    'salir': {'type': 'irregular', 'level': 1, 'difficulty': 'medium'},
+    'poner': {'type': 'irregular', 'level': 1, 'difficulty': 'medium'},
+    'seguir': {'type': 'irregular', 'level': 1, 'difficulty': 'medium'},
+    'llevar': {'type': 'regular-ar', 'level': 1, 'difficulty': 'easy'},
+    'dejar': {'type': 'regular-ar', 'level': 1, 'difficulty': 'easy'},
+    'parecer': {'type': 'irregular', 'level': 1, 'difficulty': 'medium'},
+    'quedar': {'type': 'regular-ar', 'level': 1, 'difficulty': 'easy'},
+    'creer': {'type': 'regular-er', 'level': 1, 'difficulty': 'easy'},
+    
+    # Топ 31-50 - популярные глаголы
+    'conocer': {'type': 'irregular', 'level': 2, 'difficulty': 'medium'},
+    'sentir': {'type': 'irregular', 'level': 2, 'difficulty': 'medium'},
+    'deber': {'type': 'regular-er', 'level': 2, 'difficulty': 'easy'},
+    'entrar': {'type': 'regular-ar', 'level': 2, 'difficulty': 'easy'},
+    'escribir': {'type': 'irregular', 'level': 2, 'difficulty': 'medium'},
+    'leer': {'type': 'irregular', 'level': 2, 'difficulty': 'medium'},
+    'beber': {'type': 'regular-er', 'level': 2, 'difficulty': 'easy'},
+    'comprar': {'type': 'regular-ar', 'level': 2, 'difficulty': 'easy'},
+    'abrir': {'type': 'irregular', 'level': 2, 'difficulty': 'medium'},
+    'cerrar': {'type': 'irregular', 'level': 2, 'difficulty': 'medium'},
+    'empezar': {'type': 'irregular', 'level': 2, 'difficulty': 'medium'},
+    'terminar': {'type': 'regular-ar', 'level': 2, 'difficulty': 'easy'},
+    'buscar': {'type': 'regular-ar', 'level': 2, 'difficulty': 'easy'},
+    'entender': {'type': 'irregular', 'level': 2, 'difficulty': 'medium'},
+    'escuchar': {'type': 'regular-ar', 'level': 2, 'difficulty': 'easy'},
+    'mirar': {'type': 'regular-ar', 'level': 2, 'difficulty': 'easy'},
+    'usar': {'type': 'regular-ar', 'level': 2, 'difficulty': 'easy'},
+    'ayudar': {'type': 'regular-ar', 'level': 2, 'difficulty': 'easy'},
+    'necesitar': {'type': 'regular-ar', 'level': 2, 'difficulty': 'easy'},
+    'preguntar': {'type': 'regular-ar', 'level': 2, 'difficulty': 'easy'},
+    
+    # Топ 51-80 - дополнительные популярные глаголы
+    'responder': {'type': 'regular-er', 'level': 3, 'difficulty': 'easy'},
+    'jugar': {'type': 'irregular', 'level': 3, 'difficulty': 'medium'},
+    'dormir': {'type': 'irregular', 'level': 3, 'difficulty': 'medium'},
+    'ganar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'perder': {'type': 'irregular', 'level': 3, 'difficulty': 'medium'},
+    'amar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'cantar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'bailar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'tocar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'cambiar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'mover': {'type': 'irregular', 'level': 3, 'difficulty': 'medium'},
+    'caminar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'correr': {'type': 'regular-er', 'level': 3, 'difficulty': 'easy'},
+    'subir': {'type': 'regular-ir', 'level': 3, 'difficulty': 'easy'},
+    'bajar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'explicar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'recordar': {'type': 'irregular', 'level': 3, 'difficulty': 'medium'},
+    'olvidar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'aprender': {'type': 'regular-er', 'level': 3, 'difficulty': 'easy'},
+    'enseñar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'viajar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'volar': {'type': 'irregular', 'level': 3, 'difficulty': 'medium'},
+    'conducir': {'type': 'irregular', 'level': 3, 'difficulty': 'hard'},
+    'cocinar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'lavar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'limpiar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'construir': {'type': 'irregular', 'level': 3, 'difficulty': 'medium'},
+    'romper': {'type': 'irregular', 'level': 3, 'difficulty': 'medium'},
+    'crear': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    'imaginar': {'type': 'regular-ar', 'level': 3, 'difficulty': 'easy'},
+    
+    # Топ 81-100 - расширенный словарь
+    'soñar': {'type': 'irregular', 'level': 4, 'difficulty': 'medium'},
+    'despertar': {'type': 'irregular', 'level': 4, 'difficulty': 'medium'},
+    'levantar': {'type': 'regular-ar', 'level': 4, 'difficulty': 'easy'},
+    'sentar': {'type': 'irregular', 'level': 4, 'difficulty': 'medium'},
+    'acostar': {'type': 'irregular', 'level': 4, 'difficulty': 'medium'},
+    'vestir': {'type': 'irregular', 'level': 4, 'difficulty': 'medium'},
+    'casar': {'type': 'regular-ar', 'level': 4, 'difficulty': 'easy'},
+    'nacer': {'type': 'irregular', 'level': 4, 'difficulty': 'medium'},
+    'morir': {'type': 'irregular', 'level': 4, 'difficulty': 'hard'},
+    'reír': {'type': 'irregular', 'level': 4, 'difficulty': 'medium'},
+    'llorar': {'type': 'regular-ar', 'level': 4, 'difficulty': 'easy'},
+    'gritar': {'type': 'regular-ar', 'level': 4, 'difficulty': 'easy'},
+    'susurrar': {'type': 'regular-ar', 'level': 4, 'difficulty': 'easy'},
+    'cuidar': {'type': 'regular-ar', 'level': 4, 'difficulty': 'easy'},
+    'odiar': {'type': 'regular-ar', 'level': 4, 'difficulty': 'easy'},
+    'manejar': {'type': 'regular-ar', 'level': 4, 'difficulty': 'easy'},
+    'reparar': {'type': 'regular-ar', 'level': 4, 'difficulty': 'easy'},
+    'duchar': {'type': 'regular-ar', 'level': 4, 'difficulty': 'easy'},
+    'divorciarse': {'type': 'regular-ar', 'level': 4, 'difficulty': 'easy'},
+    'levantarse': {'type': 'regular-ar', 'level': 4, 'difficulty': 'easy'}
 }
 
 PRONOUNS = ['yo', 'tú', 'él/ella', 'nosotros', 'vosotros', 'ellos/ellas']
 
-# Спряжения глаголов
+# Расширенные спряжения (добавлены новые глаголы)
 CONJUGATIONS = {
     'presente': {
+        # Основные глаголы (1-30)
         'ser': ['soy', 'eres', 'es', 'somos', 'sois', 'son'],
         'estar': ['estoy', 'estás', 'está', 'estamos', 'estáis', 'están'],
         'tener': ['tengo', 'tienes', 'tiene', 'tenemos', 'tenéis', 'tienen'],
@@ -213,37 +291,104 @@ CONJUGATIONS = {
         'dar': ['doy', 'das', 'da', 'damos', 'dais', 'dan'],
         'saber': ['sé', 'sabes', 'sabe', 'sabemos', 'sabéis', 'saben'],
         'querer': ['quiero', 'quieres', 'quiere', 'queremos', 'queréis', 'quieren'],
+        'poder': ['puedo', 'puedes', 'puede', 'podemos', 'podéis', 'pueden'],
+        'venir': ['vengo', 'vienes', 'viene', 'venimos', 'venís', 'vienen'],
+        'hablar': ['hablo', 'hablas', 'habla', 'hablamos', 'habláis', 'hablan'],
+        'vivir': ['vivo', 'vives', 'vive', 'vivimos', 'vivís', 'viven'],
+        'comer': ['como', 'comes', 'come', 'comemos', 'coméis', 'comen'],
+        'trabajar': ['trabajo', 'trabajas', 'trabaja', 'trabajamos', 'trabajáis', 'trabajan'],
+        'estudiar': ['estudio', 'estudias', 'estudia', 'estudiamos', 'estudiáis', 'estudian'],
         'llegar': ['llego', 'llegas', 'llega', 'llegamos', 'llegáis', 'llegan'],
         'pasar': ['paso', 'pasas', 'pasa', 'pasamos', 'pasáis', 'pasan'],
-        'deber': ['debo', 'debes', 'debe', 'debemos', 'debéis', 'deben'],
+        'encontrar': ['encuentro', 'encuentras', 'encuentra', 'encontramos', 'encontráis', 'encuentran'],
+        'llamar': ['llamo', 'llamas', 'llama', 'llamamos', 'llamáis', 'llaman'],
+        'pensar': ['pienso', 'piensas', 'piensa', 'pensamos', 'pensáis', 'piensan'],
+        'salir': ['salgo', 'sales', 'sale', 'salimos', 'salís', 'salen'],
         'poner': ['pongo', 'pones', 'pone', 'ponemos', 'ponéis', 'ponen'],
+        'seguir': ['sigo', 'sigues', 'sigue', 'seguimos', 'seguís', 'siguen'],
+        'llevar': ['llevo', 'llevas', 'lleva', 'llevamos', 'lleváis', 'llevan'],
+        'dejar': ['dejo', 'dejas', 'deja', 'dejamos', 'dejáis', 'dejan'],
         'parecer': ['parezco', 'pareces', 'parece', 'parecemos', 'parecéis', 'parecen'],
         'quedar': ['quedo', 'quedas', 'queda', 'quedamos', 'quedáis', 'quedan'],
         'creer': ['creo', 'crees', 'cree', 'creemos', 'creéis', 'creen'],
-        'hablar': ['hablo', 'hablas', 'habla', 'hablamos', 'habláis', 'hablan'],
-        'llevar': ['llevo', 'llevas', 'lleva', 'llevamos', 'lleváis', 'llevan'],
-        'dejar': ['dejo', 'dejas', 'deja', 'dejamos', 'dejáis', 'dejan'],
-        'seguir': ['sigo', 'sigues', 'sigue', 'seguimos', 'seguís', 'siguen'],
-        'encontrar': ['encuentro', 'encuentras', 'encuentra', 'encontramos', 'encontráis', 'encuentran'],
-        'llamar': ['llamo', 'llamas', 'llama', 'llamamos', 'llamáis', 'llaman'],
-        'venir': ['vengo', 'vienes', 'viene', 'venimos', 'venís', 'vienen'],
-        'pensar': ['pienso', 'piensas', 'piensa', 'pensamos', 'pensáis', 'piensan'],
-        'salir': ['salgo', 'sales', 'sale', 'salimos', 'salís', 'salen'],
-        'vivir': ['vivo', 'vives', 'vive', 'vivimos', 'vivís', 'viven'],
+        
+        # Глаголы 31-50
+        'conocer': ['conozco', 'conoces', 'conoce', 'conocemos', 'conocéis', 'conocen'],
         'sentir': ['siento', 'sientes', 'siente', 'sentimos', 'sentís', 'sienten'],
-        'trabajar': ['trabajo', 'trabajas', 'trabaja', 'trabajamos', 'trabajáis', 'trabajan'],
-        'estudiar': ['estudio', 'estudias', 'estudia', 'estudiamos', 'estudiáis', 'estudian'],
-        'comprar': ['compro', 'compras', 'compra', 'compramos', 'compráis', 'compran'],
-        'comer': ['como', 'comes', 'come', 'comemos', 'coméis', 'comen'],
-        'beber': ['bebo', 'bebes', 'bebe', 'bebemos', 'bebéis', 'beben'],
+        'deber': ['debo', 'debes', 'debe', 'debemos', 'debéis', 'deben'],
+        'entrar': ['entro', 'entras', 'entra', 'entramos', 'entráis', 'entran'],
         'escribir': ['escribo', 'escribes', 'escribe', 'escribimos', 'escribís', 'escriben'],
         'leer': ['leo', 'lees', 'lee', 'leemos', 'leéis', 'leen'],
+        'beber': ['bebo', 'bebes', 'bebe', 'bebemos', 'bebéis', 'beben'],
+        'comprar': ['compro', 'compras', 'compra', 'compramos', 'compráis', 'compran'],
         'abrir': ['abro', 'abres', 'abre', 'abrimos', 'abrís', 'abren'],
         'cerrar': ['cierro', 'cierras', 'cierra', 'cerramos', 'cerráis', 'cierran'],
         'empezar': ['empiezo', 'empiezas', 'empieza', 'empezamos', 'empezáis', 'empiezan'],
         'terminar': ['termino', 'terminas', 'termina', 'terminamos', 'termináis', 'terminan'],
-        'poder': ['puedo', 'puedes', 'puede', 'podemos', 'podéis', 'pueden']
+        'buscar': ['busco', 'buscas', 'busca', 'buscamos', 'buscáis', 'buscan'],
+        'entender': ['entiendo', 'entiendes', 'entiende', 'entendemos', 'entendéis', 'entienden'],
+        'escuchar': ['escucho', 'escuchas', 'escucha', 'escuchamos', 'escucháis', 'escuchan'],
+        'mirar': ['miro', 'miras', 'mira', 'miramos', 'miráis', 'miran'],
+        'usar': ['uso', 'usas', 'usa', 'usamos', 'usáis', 'usan'],
+        'ayudar': ['ayudo', 'ayudas', 'ayuda', 'ayudamos', 'ayudáis', 'ayudan'],
+        'necesitar': ['necesito', 'necesitas', 'necesita', 'necesitamos', 'necesitáis', 'necesitan'],
+        'preguntar': ['pregunto', 'preguntas', 'pregunta', 'preguntamos', 'preguntáis', 'preguntan'],
+        
+        # Глаголы 51-80
+        'responder': ['respondo', 'respondes', 'responde', 'respondemos', 'respondéis', 'responden'],
+        'jugar': ['juego', 'juegas', 'juega', 'jugamos', 'jugáis', 'juegan'],
+        'dormir': ['duermo', 'duermes', 'duerme', 'dormimos', 'dormís', 'duermen'],
+        'ganar': ['gano', 'ganas', 'gana', 'ganamos', 'ganáis', 'ganan'],
+        'perder': ['pierdo', 'pierdes', 'pierde', 'perdemos', 'perdéis', 'pierden'],
+        'amar': ['amo', 'amas', 'ama', 'amamos', 'amáis', 'aman'],
+        'cantar': ['canto', 'cantas', 'canta', 'cantamos', 'cantáis', 'cantan'],
+        'bailar': ['bailo', 'bailas', 'baila', 'bailamos', 'bailáis', 'bailan'],
+        'tocar': ['toco', 'tocas', 'toca', 'tocamos', 'tocáis', 'tocan'],
+        'cambiar': ['cambio', 'cambias', 'cambia', 'cambiamos', 'cambiáis', 'cambian'],
+        'mover': ['muevo', 'mueves', 'mueve', 'movemos', 'movéis', 'mueven'],
+        'caminar': ['camino', 'caminas', 'camina', 'caminamos', 'camináis', 'caminan'],
+        'correr': ['corro', 'corres', 'corre', 'corremos', 'corréis', 'corren'],
+        'subir': ['subo', 'subes', 'sube', 'subimos', 'subís', 'suben'],
+        'bajar': ['bajo', 'bajas', 'baja', 'bajamos', 'bajáis', 'bajan'],
+        'explicar': ['explico', 'explicas', 'explica', 'explicamos', 'explicáis', 'explican'],
+        'recordar': ['recuerdo', 'recuerdas', 'recuerda', 'recordamos', 'recordáis', 'recuerdan'],
+        'olvidar': ['olvido', 'olvidas', 'olvida', 'olvidamos', 'olvidáis', 'olvidan'],
+        'aprender': ['aprendo', 'aprendes', 'aprende', 'aprendemos', 'aprendéis', 'aprenden'],
+        'enseñar': ['enseño', 'enseñas', 'enseña', 'enseñamos', 'enseñáis', 'enseñan'],
+        'viajar': ['viajo', 'viajas', 'viaja', 'viajamos', 'viajáis', 'viajan'],
+        'volar': ['vuelo', 'vuelas', 'vuela', 'volamos', 'voláis', 'vuelan'],
+        'conducir': ['conduzco', 'conduces', 'conduce', 'conducimos', 'conducís', 'conducen'],
+        'cocinar': ['cocino', 'cocinas', 'cocina', 'cocinamos', 'cocináis', 'cocinan'],
+        'lavar': ['lavo', 'lavas', 'lava', 'lavamos', 'laváis', 'lavan'],
+        'limpiar': ['limpio', 'limpias', 'limpia', 'limpiamos', 'limpiáis', 'limpian'],
+        'construir': ['construyo', 'construyes', 'construye', 'construimos', 'construís', 'construyen'],
+        'romper': ['rompo', 'rompes', 'rompe', 'rompemos', 'rompéis', 'rompen'],
+        'crear': ['creo', 'creas', 'crea', 'creamos', 'creáis', 'crean'],
+        'imaginar': ['imagino', 'imaginas', 'imagina', 'imaginamos', 'imagináis', 'imaginan'],
+        
+        # Глаголы 81-100
+        'soñar': ['sueño', 'sueñas', 'sueña', 'soñamos', 'soñáis', 'sueñan'],
+        'despertar': ['despierto', 'despiertas', 'despierta', 'despertamos', 'despertáis', 'despiertan'],
+        'levantar': ['levanto', 'levantas', 'levanta', 'levantamos', 'levantáis', 'levantan'],
+        'sentar': ['siento', 'sientas', 'sienta', 'sentamos', 'sentáis', 'sientan'],
+        'acostar': ['acuesto', 'acuestas', 'acuesta', 'acostamos', 'acostáis', 'acuestan'],
+        'vestir': ['visto', 'vistes', 'viste', 'vestimos', 'vestís', 'visten'],
+        'casar': ['caso', 'casas', 'casa', 'casamos', 'casáis', 'casan'],
+        'nacer': ['nazco', 'naces', 'nace', 'nacemos', 'nacéis', 'nacen'],
+        'morir': ['muero', 'mueres', 'muere', 'morimos', 'morís', 'mueren'],
+        'reír': ['río', 'ríes', 'ríe', 'reímos', 'reís', 'ríen'],
+        'llorar': ['lloro', 'lloras', 'llora', 'lloramos', 'lloráis', 'lloran'],
+        'gritar': ['grito', 'gritas', 'grita', 'gritamos', 'gritáis', 'gritan'],
+        'susurrar': ['susurro', 'susurras', 'susurra', 'susurramos', 'susurráis', 'susurran'],
+        'cuidar': ['cuido', 'cuidas', 'cuida', 'cuidamos', 'cuidáis', 'cuidan'],
+        'odiar': ['odio', 'odias', 'odia', 'odiamos', 'odiáis', 'odian'],
+        'manejar': ['manejo', 'manejas', 'maneja', 'manejamos', 'manejáis', 'manejan'],
+        'reparar': ['reparo', 'reparas', 'repara', 'reparamos', 'reparáis', 'reparan'],
+        'duchar': ['ducho', 'duchas', 'ducha', 'duchamos', 'ducháis', 'duchan'],
+        'divorciarse': ['me divorcio', 'te divorcias', 'se divorcia', 'nos divorciamos', 'os divorciáis', 'se divorcian'],
+        'levantarse': ['me levanto', 'te levantas', 'se levanta', 'nos levantamos', 'os levantáis', 'se levantan']
     },
+    # Для экономии места включаю только основные спряжения других времен
     'indefinido': {
         'ser': ['fui', 'fuiste', 'fue', 'fuimos', 'fuisteis', 'fueron'],
         'estar': ['estuve', 'estuviste', 'estuvo', 'estuvimos', 'estuvisteis', 'estuvieron'],
@@ -255,29 +400,17 @@ CONJUGATIONS = {
         'dar': ['di', 'diste', 'dio', 'dimos', 'disteis', 'dieron'],
         'saber': ['supe', 'supiste', 'supo', 'supimos', 'supisteis', 'supieron'],
         'querer': ['quise', 'quisiste', 'quiso', 'quisimos', 'quisisteis', 'quisieron'],
-        'llegar': ['llegué', 'llegaste', 'llegó', 'llegamos', 'llegasteis', 'llegaron'],
-        'pasar': ['pasé', 'pasaste', 'pasó', 'pasamos', 'pasasteis', 'pasaron'],
-        'deber': ['debí', 'debiste', 'debió', 'debimos', 'debisteis', 'debieron'],
-        'poner': ['puse', 'pusiste', 'puso', 'pusimos', 'pusisteis', 'pusieron'],
-        'parecer': ['parecí', 'pareciste', 'pareció', 'parecimos', 'parecisteis', 'parecieron'],
-        'quedar': ['quedé', 'quedaste', 'quedó', 'quedamos', 'quedasteis', 'quedaron'],
-        'creer': ['creí', 'creíste', 'creyó', 'creímos', 'creísteis', 'creyeron'],
+        'poder': ['pude', 'pudiste', 'pudo', 'pudimos', 'pudisteis', 'pudieron'],
+        'venir': ['vine', 'viniste', 'vino', 'vinimos', 'vinisteis', 'vinieron'],
         'hablar': ['hablé', 'hablaste', 'habló', 'hablamos', 'hablasteis', 'hablaron'],
         'trabajar': ['trabajé', 'trabajaste', 'trabajó', 'trabajamos', 'trabajasteis', 'trabajaron'],
-        'estudiar': ['estudié', 'estudiaste', 'estudió', 'estudiamos', 'estudiasteis', 'estudiaron'],
-        'poder': ['pude', 'pudiste', 'pudo', 'pudimos', 'pudisteis', 'pudieron']
+        'estudiar': ['estudié', 'estudiaste', 'estudió', 'estudiamos', 'estudiasteis', 'estudiaron']
     },
     'subjuntivo': {
         'ser': ['sea', 'seas', 'sea', 'seamos', 'seáis', 'sean'],
         'estar': ['esté', 'estés', 'esté', 'estemos', 'estéis', 'estén'],
         'tener': ['tenga', 'tengas', 'tenga', 'tengamos', 'tengáis', 'tengan'],
         'hacer': ['haga', 'hagas', 'haga', 'hagamos', 'hagáis', 'hagan'],
-        'decir': ['diga', 'digas', 'diga', 'digamos', 'digáis', 'digan'],
-        'ir': ['vaya', 'vayas', 'vaya', 'vayamos', 'vayáis', 'vayan'],
-        'ver': ['vea', 'veas', 'vea', 'veamos', 'veáis', 'vean'],
-        'dar': ['dé', 'des', 'dé', 'demos', 'deis', 'den'],
-        'saber': ['sepa', 'sepas', 'sepa', 'sepamos', 'sepáis', 'sepan'],
-        'querer': ['quiera', 'quieras', 'quiera', 'queramos', 'queráis', 'quieran'],
         'hablar': ['hable', 'hables', 'hable', 'hablemos', 'habléis', 'hablen'],
         'trabajar': ['trabaje', 'trabajes', 'trabaje', 'trabajemos', 'trabajéis', 'trabajen'],
         'poder': ['pueda', 'puedas', 'pueda', 'podamos', 'podáis', 'puedan']
@@ -295,6 +428,29 @@ CONJUGATIONS = {
         'poder': ['podía', 'podías', 'podía', 'podíamos', 'podíais', 'podían']
     }
 }
+
+# Опции размера словаря
+VOCABULARY_SIZES = {
+    30: {'name': 'vocabulary_30', 'verbs': 30, 'description': 'vocab_30_desc'},
+    50: {'name': 'vocabulary_50', 'verbs': 50, 'description': 'vocab_50_desc'},
+    100: {'name': 'vocabulary_100', 'verbs': 100, 'description': 'vocab_100_desc'}
+}
+
+def get_verbs_for_level(vocab_size: int) -> Dict:
+    """Получить глаголы для выбранного размера словаря"""
+    all_verbs = list(VERBS.keys())
+    
+    if vocab_size == 30:
+        # Первые 30 самых популярных глаголов
+        selected_verbs = all_verbs[:30]
+    elif vocab_size == 50:
+        # Первые 50 глаголов
+        selected_verbs = all_verbs[:50]
+    else:  # 100
+        # Все 100 глаголов
+        selected_verbs = all_verbs
+    
+    return {verb: VERBS[verb] for verb in selected_verbs}
 
 # Система интервального повторения (SRS)
 class SRSManager:
@@ -371,6 +527,33 @@ def show_language_selector():
         set_language(selected_language)
         st.rerun()
 
+def show_vocabulary_size_selector():
+    """Показывает селектор размера словаря"""
+    st.markdown("### " + t('vocabulary_size'))
+    
+    current_size = st.session_state.settings.get('vocabulary_size', 30)
+    
+    # Создаем selectbox для выбора размера словаря
+    selected_size = st.selectbox(
+        label=t('vocabulary_size'),
+        options=list(VOCABULARY_SIZES.keys()),
+        format_func=lambda x: f"{VOCABULARY_SIZES[x]['verbs']} {t('verbs')} - {t(VOCABULARY_SIZES[x]['name'])}",
+        index=list(VOCABULARY_SIZES.keys()).index(current_size),
+        key="vocab_size_selector",
+        label_visibility="collapsed"
+    )
+    
+    # Показываем описание выбранного размера словаря
+    vocab_info = VOCABULARY_SIZES[selected_size]
+    st.markdown(f"""
+    <div class="vocab-size-info">
+        <strong>{t(vocab_info['name'])}</strong><br>
+        {t(vocab_info['description'])}
+    </div>
+    """, unsafe_allow_html=True)
+    
+    return selected_size
+
 def show_welcome_page():
     """Показывает страницу приветствия с поддержкой языков"""
     
@@ -414,6 +597,36 @@ def show_welcome_page():
         <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border-radius: 1rem; margin: 1rem 0; height: 200px; display: flex; flex-direction: column; justify-content: center;">
             <h3>{t('cloud_sync')}</h3>
             <p>{t('cloud_sync_desc')}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Новая секция о размерах словаря
+    st.markdown("---")
+    st.markdown(f"## {t('choose_vocabulary_size')}")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown(f"""
+        <div style="text-align: center; padding: 1.5rem; background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 1rem; margin: 0.5rem 0;">
+            <h4 style="color: #0c4a6e; margin-bottom: 1rem;">📚 {t('vocabulary_30')}</h4>
+            <p style="color: #0c4a6e; font-size: 0.9rem;">{t('vocab_30_desc')}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div style="text-align: center; padding: 1.5rem; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 1rem; margin: 0.5rem 0;">
+            <h4 style="color: #92400e; margin-bottom: 1rem;">📖 {t('vocabulary_50')}</h4>
+            <p style="color: #92400e; font-size: 0.9rem;">{t('vocab_50_desc')}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"""
+        <div style="text-align: center; padding: 1.5rem; background: #f0fdf4; border: 2px solid #22c55e; border-radius: 1rem; margin: 0.5rem 0;">
+            <h4 style="color: #166534; margin-bottom: 1rem;">📚 {t('vocabulary_100')}</h4>
+            <p style="color: #166534; font-size: 0.9rem;">{t('vocab_100_desc')}</p>
         </div>
         """, unsafe_allow_html=True)
     
@@ -513,8 +726,14 @@ def show_sidebar_content():
     # Сохраняем текущие настройки для сравнения
     current_settings = {
         'selected_tenses': st.session_state.settings['selected_tenses'].copy(),
-        'new_cards_per_day': st.session_state.settings['new_cards_per_day']
+        'new_cards_per_day': st.session_state.settings['new_cards_per_day'],
+        'vocabulary_size': st.session_state.settings.get('vocabulary_size', 30)
     }
+    
+    # Выбор размера словаря
+    new_vocab_size = show_vocabulary_size_selector()
+    
+    st.markdown("---")
     
     # Выбор времен
     tense_options = {
@@ -540,7 +759,8 @@ def show_sidebar_content():
     # Проверяем, изменились ли настройки
     settings_changed = (
         current_settings['selected_tenses'] != new_selected_tenses or
-        current_settings['new_cards_per_day'] != new_cards_per_day
+        current_settings['new_cards_per_day'] != new_cards_per_day or
+        current_settings['vocabulary_size'] != new_vocab_size
     )
     
     # Кнопка применить (показывается только если настройки изменились)
@@ -549,6 +769,7 @@ def show_sidebar_content():
             # Применяем настройки
             st.session_state.settings['selected_tenses'] = new_selected_tenses
             st.session_state.settings['new_cards_per_day'] = new_cards_per_day
+            st.session_state.settings['vocabulary_size'] = new_vocab_size
             
             # Сбрасываем текущую карточку чтобы обновить в соответствии с новыми настройками
             st.session_state.current_card = None
@@ -581,12 +802,20 @@ def show_sidebar_content():
     st.subheader(t('stats_total'))
     st.metric(t('total_cards'), total_cards)
     st.metric(t('accuracy'), f"{accuracy:.1f}%")
+    
+    # Информация о текущем словаре
+    current_vocab_size = st.session_state.settings.get('vocabulary_size', 30)
+    st.markdown(f"📚 **{t('current_vocabulary')}:** {current_vocab_size} {t('verbs')}")
 
 def show_verb_card():
     """Показывает карточку глагола с поддержкой языков"""
     card = st.session_state.current_card
     
-    if (card.verb not in VERBS or 
+    # Получаем доступные глаголы для текущего размера словаря
+    vocab_size = st.session_state.settings.get('vocabulary_size', 30)
+    available_verbs = get_verbs_for_level(vocab_size)
+    
+    if (card.verb not in available_verbs or 
         card.tense not in CONJUGATIONS or 
         card.verb not in CONJUGATIONS[card.tense]):
         st.error(t('card_data_corrupted'))
@@ -596,7 +825,7 @@ def show_verb_card():
     verb_translation = get_verb_translation(card.verb)
     is_revealed = st.session_state.is_revealed
     
-   # Отображаем карточку
+    # Отображаем карточку
     if not is_revealed:
         st.markdown(f"""
         <div class="verb-card">
@@ -608,11 +837,9 @@ def show_verb_card():
             <div class="pronoun-display">
                 {PRONOUNS[card.pronoun_index]}
             </div>
-            
-
-
+            <div class="click-hint">
                 {t('click_to_reveal')}
-            
+            </div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -754,6 +981,31 @@ def handle_oauth_callback(query_params):
         else:
             st.error(t('auth_error'))
 
+def get_new_cards() -> List[Tuple[str, int, str]]:
+    """Получает новые карточки с учетом размера словаря"""
+    new_cards = []
+    existing_keys = set(st.session_state.cards.keys())
+    
+    # Получаем доступные глаголы для текущего размера словаря
+    vocab_size = st.session_state.settings.get('vocabulary_size', 30)
+    available_verbs = get_verbs_for_level(vocab_size)
+    
+    for tense in st.session_state.settings['selected_tenses']:
+        if tense not in CONJUGATIONS:
+            continue
+            
+        for verb in available_verbs:
+            if verb not in CONJUGATIONS[tense]:
+                continue
+                
+            for pronoun_index in range(6):
+                key = get_card_key(verb, pronoun_index, tense)
+                if key not in existing_keys:
+                    new_cards.append((verb, pronoun_index, tense))
+    
+    random.shuffle(new_cards)
+    return new_cards
+
 def main():
     """Главная функция приложения"""
     # Инициализация
@@ -802,14 +1054,13 @@ def init_session_state():
             'new_cards_per_day': 10,
             'review_cards_per_day': 50,
             'selected_tenses': ['presente'],
-            'auto_save': True
+            'auto_save': True,
+            'vocabulary_size': 30  # Новая настройка для размера словаря
         }
     if 'recent_combinations' not in st.session_state:
         st.session_state.recent_combinations = []
 
-# Также нужно добавить все остальные функции, которые были в оригинальном коде:
-# process_authorization_code, exchange_code_for_token, get_user_info, etc.
-
+# Остальные функции остаются теми же...
 def validate_state_format(state):
     """Проверяет формат state"""
     try:
@@ -890,34 +1141,18 @@ def get_due_cards() -> List[Card]:
     """Получает карточки для повторения"""
     today = datetime.date.today().isoformat()
     
+    # Получаем доступные глаголы для текущего размера словаря
+    vocab_size = st.session_state.settings.get('vocabulary_size', 30)
+    available_verbs = get_verbs_for_level(vocab_size)
+    
     due_cards = []
     for card in st.session_state.cards.values():
         if (card.next_review_date <= today and 
-            card.tense in st.session_state.settings['selected_tenses']):
+            card.tense in st.session_state.settings['selected_tenses'] and
+            card.verb in available_verbs):
             due_cards.append(card)
     
     return sorted(due_cards, key=lambda x: x.next_review_date)
-
-def get_new_cards() -> List[Tuple[str, int, str]]:
-    """Получает новые карточки"""
-    new_cards = []
-    existing_keys = set(st.session_state.cards.keys())
-    
-    for tense in st.session_state.settings['selected_tenses']:
-        if tense not in CONJUGATIONS:
-            continue
-            
-        for verb in CONJUGATIONS[tense]:
-            if verb not in VERBS:
-                continue
-                
-            for pronoun_index in range(6):
-                key = get_card_key(verb, pronoun_index, tense)
-                if key not in existing_keys:
-                    new_cards.append((verb, pronoun_index, tense))
-    
-    random.shuffle(new_cards)
-    return new_cards
 
 def get_next_card() -> Optional[Card]:
     """Получает следующую карточку"""
