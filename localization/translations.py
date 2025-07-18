@@ -583,7 +583,7 @@ Stem + -ía, -ías, -ía, -íamos, -íais, -ían
     }
 }
 
-def get_text(key: str, language: str = 'ru') -> str:
+def get_text(key: str, language: str = 'en') -> str:
     """
     Получить перевод по ключу
     
@@ -595,7 +595,7 @@ def get_text(key: str, language: str = 'ru') -> str:
         Переведенный текст или ключ если перевод не найден
     """
     if language not in TRANSLATIONS:
-        language = 'ru'  # Fallback на русский
+        language = 'en'  # Fallback на английский
     
     translations = TRANSLATIONS[language]
     
@@ -626,11 +626,11 @@ def get_verb_translation(verb: str, language: str = None) -> str:
         language = get_current_language()
     
     if language not in VERB_TRANSLATIONS:
-        language = 'ru'  # Fallback на русский
+        language = 'en'  # Fallback на английский
     
     return VERB_TRANSLATIONS[language].get(verb, verb)
 
-def get_grammar_rule(tense: str, language: str = 'ru') -> dict:
+def get_grammar_rule(tense: str, language: str = 'en') -> dict:
     """
     Получить правило грамматики для времени
     
@@ -642,7 +642,7 @@ def get_grammar_rule(tense: str, language: str = 'ru') -> dict:
         Словарь с title и content
     """
     if language not in GRAMMAR_RULES:
-        language = 'ru'
+        language = 'en'
     
     return GRAMMAR_RULES[language].get(tense, {
         'title': f'[{tense}]',
@@ -658,14 +658,14 @@ def get_available_languages() -> dict:
 
 def get_current_language() -> str:
     """Получить текущий язык из session_state"""
-    return st.session_state.get('interface_language', 'ru')
+    return st.session_state.get('interface_language', 'en')
 
 def set_language(language_code: str):
     """Установить язык интерфейса"""
     if language_code in get_available_languages():
         st.session_state.interface_language = language_code
     else:
-        st.session_state.interface_language = 'ru'
+        st.session_state.interface_language = 'en'
 
 def t(key: str, language: str = None) -> str:
     """Сокращенная функция перевода"""
