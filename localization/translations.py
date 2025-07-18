@@ -1,6 +1,6 @@
 # localization/translations.py
 """
-Полный файл с переводами для всех языков (исправленная версия)
+Полный файл с переводами для всех языков с расширенным словарем (100 глаголов)
 """
 
 import streamlit as st
@@ -62,6 +62,22 @@ TRANSLATIONS = {
         'apply_settings': '✅ Применить настройки',
         'settings_applied': '✅ Настройки применены!',
         'change_settings_hint': '💡 Измените настройки выше, чтобы появилась кнопка применения',
+        
+        # Размер словаря
+        'vocabulary_size': '📚 Размер словаря',
+        'verbs': 'глаголов',
+        'current_vocabulary': 'Текущий словарь',
+        'choose_vocabulary_size': '📚 Выберите размер словаря',
+        
+        # Варианты размера словаря
+        'vocabulary_30': 'Базовый (30 глаголов)',
+        'vocabulary_50': 'Средний (50 глаголов)',
+        'vocabulary_100': 'Полный (100 глаголов)',
+        
+        # Описания размеров словаря
+        'vocab_30_desc': 'Самые важные и часто используемые глаголы. Идеально для начинающих.',
+        'vocab_50_desc': 'Расширенный набор популярных глаголов. Для продолжающих изучение.',
+        'vocab_100_desc': 'Полный набор самых популярных испанских глаголов. Для серьезного изучения.',
         
         # Времена глаголов
         'presente': 'Presente',
@@ -159,6 +175,22 @@ TRANSLATIONS = {
         'settings_applied': '✅ Settings applied!',
         'change_settings_hint': '💡 Change settings above to see the apply button',
         
+        # Vocabulary size
+        'vocabulary_size': '📚 Vocabulary size',
+        'verbs': 'verbs',
+        'current_vocabulary': 'Current vocabulary',
+        'choose_vocabulary_size': '📚 Choose vocabulary size',
+        
+        # Vocabulary size options
+        'vocabulary_30': 'Basic (30 verbs)',
+        'vocabulary_50': 'Intermediate (50 verbs)',
+        'vocabulary_100': 'Complete (100 verbs)',
+        
+        # Vocabulary size descriptions
+        'vocab_30_desc': 'Most important and frequently used verbs. Perfect for beginners.',
+        'vocab_50_desc': 'Extended set of popular verbs. For continuing learners.',
+        'vocab_100_desc': 'Complete set of the most popular Spanish verbs. For serious study.',
+        
         # Verb tenses
         'presente': 'Present',
         'indefinido': 'Preterite',
@@ -200,9 +232,10 @@ TRANSLATIONS = {
     }
 }
 
-# Переводы глаголов на разные языки
+# Переводы глаголов на разные языки (расширенный до 100 глаголов)
 VERB_TRANSLATIONS = {
     'ru': {
+        # Основные глаголы (1-30)
         'ser': 'быть, являться',
         'estar': 'находиться, быть',
         'tener': 'иметь',
@@ -213,38 +246,105 @@ VERB_TRANSLATIONS = {
         'dar': 'давать',
         'saber': 'знать',
         'querer': 'хотеть, любить',
+        'poder': 'мочь',
+        'venir': 'приходить',
+        'hablar': 'говорить',
+        'vivir': 'жить',
+        'comer': 'есть',
+        'trabajar': 'работать',
+        'estudiar': 'изучать',
         'llegar': 'прибывать, приходить',
         'pasar': 'проходить, проводить',
-        'deber': 'быть должным',
+        'encontrar': 'находить, встречать',
+        'llamar': 'звать, называть',
+        'pensar': 'думать',
+        'salir': 'выходить',
         'poner': 'класть, ставить',
+        'seguir': 'следовать, продолжать',
+        'llevar': 'носить, нести',
+        'dejar': 'оставлять',
         'parecer': 'казаться',
         'quedar': 'оставаться',
         'creer': 'верить, считать',
-        'hablar': 'говорить',
-        'llevar': 'носить, нести',
-        'dejar': 'оставлять',
-        'seguir': 'следовать, продолжать',
-        'encontrar': 'находить, встречать',
-        'llamar': 'звать, называть',
-        'venir': 'приходить',
-        'pensar': 'думать',
-        'salir': 'выходить',
-        'vivir': 'жить',
+        
+        # Глаголы 31-50
+        'conocer': 'знать (людей/места)',
         'sentir': 'чувствовать',
-        'trabajar': 'работать',
-        'estudiar': 'изучать',
-        'comprar': 'покупать',
-        'comer': 'есть',
-        'beber': 'пить',
+        'deber': 'быть должным',
+        'entrar': 'входить',
         'escribir': 'писать',
         'leer': 'читать',
+        'beber': 'пить',
+        'comprar': 'покупать',
         'abrir': 'открывать',
         'cerrar': 'закрывать',
         'empezar': 'начинать',
         'terminar': 'заканчивать',
-        'poder': 'мочь'
+        'buscar': 'искать',
+        'entender': 'понимать',
+        'escuchar': 'слушать',
+        'mirar': 'смотреть',
+        'usar': 'использовать',
+        'ayudar': 'помогать',
+        'necesitar': 'нуждаться',
+        'preguntar': 'спрашивать',
+        
+        # Глаголы 51-80
+        'responder': 'отвечать',
+        'jugar': 'играть',
+        'dormir': 'спать',
+        'ganar': 'выигрывать, зарабатывать',
+        'perder': 'терять',
+        'amar': 'любить',
+        'cantar': 'петь',
+        'bailar': 'танцевать',
+        'tocar': 'трогать, играть (на инструменте)',
+        'cambiar': 'менять',
+        'mover': 'двигать',
+        'caminar': 'ходить пешком',
+        'correr': 'бегать',
+        'subir': 'подниматься',
+        'bajar': 'спускаться',
+        'explicar': 'объяснять',
+        'recordar': 'помнить',
+        'olvidar': 'забывать',
+        'aprender': 'учиться',
+        'enseñar': 'учить',
+        'viajar': 'путешествовать',
+        'volar': 'летать',
+        'conducir': 'водить машину',
+        'cocinar': 'готовить',
+        'lavar': 'мыть',
+        'limpiar': 'чистить',
+        'construir': 'строить',
+        'romper': 'ломать',
+        'crear': 'создавать',
+        'imaginar': 'воображать',
+        
+        # Глаголы 81-100
+        'soñar': 'мечтать, видеть сны',
+        'despertar': 'просыпаться',
+        'levantar': 'поднимать',
+        'sentar': 'сажать',
+        'acostar': 'укладывать спать',
+        'vestir': 'одевать',
+        'casar': 'жениться/выходить замуж',
+        'nacer': 'рождаться',
+        'morir': 'умирать',
+        'reír': 'смеяться',
+        'llorar': 'плакать',
+        'gritar': 'кричать',
+        'susurrar': 'шептать',
+        'cuidar': 'заботиться',
+        'odiar': 'ненавидеть',
+        'manejar': 'управлять',
+        'reparar': 'чинить',
+        'duchar': 'принимать душ',
+        'divorciarse': 'разводиться',
+        'levantarse': 'вставать'
     },
     'en': {
+        # Basic verbs (1-30)
         'ser': 'to be (permanent)',
         'estar': 'to be (temporary)',
         'tener': 'to have',
@@ -255,40 +355,106 @@ VERB_TRANSLATIONS = {
         'dar': 'to give',
         'saber': 'to know (facts)',
         'querer': 'to want, to love',
+        'poder': 'to be able to, can',
+        'venir': 'to come',
+        'hablar': 'to speak, to talk',
+        'vivir': 'to live',
+        'comer': 'to eat',
+        'trabajar': 'to work',
+        'estudiar': 'to study',
         'llegar': 'to arrive, to come',
         'pasar': 'to pass, to spend time',
-        'deber': 'to owe, must',
+        'encontrar': 'to find, to meet',
+        'llamar': 'to call, to name',
+        'pensar': 'to think',
+        'salir': 'to leave, to go out',
         'poner': 'to put, to place',
+        'seguir': 'to follow, to continue',
+        'llevar': 'to carry, to wear',
+        'dejar': 'to leave, to let',
         'parecer': 'to seem, to appear',
         'quedar': 'to stay, to remain',
         'creer': 'to believe, to think',
-        'hablar': 'to speak, to talk',
-        'llevar': 'to carry, to wear',
-        'dejar': 'to leave, to let',
-        'seguir': 'to follow, to continue',
-        'encontrar': 'to find, to meet',
-        'llamar': 'to call, to name',
-        'venir': 'to come',
-        'pensar': 'to think',
-        'salir': 'to leave, to go out',
-        'vivir': 'to live',
+        
+        # Verbs 31-50
+        'conocer': 'to know (people/places)',
         'sentir': 'to feel',
-        'trabajar': 'to work',
-        'estudiar': 'to study',
-        'comprar': 'to buy',
-        'comer': 'to eat',
-        'beber': 'to drink',
+        'deber': 'to owe, must',
+        'entrar': 'to enter',
         'escribir': 'to write',
         'leer': 'to read',
+        'beber': 'to drink',
+        'comprar': 'to buy',
         'abrir': 'to open',
         'cerrar': 'to close',
         'empezar': 'to begin, to start',
         'terminar': 'to finish, to end',
-        'poder': 'to be able to, can'
+        'buscar': 'to look for, to search',
+        'entender': 'to understand',
+        'escuchar': 'to listen',
+        'mirar': 'to look at, to watch',
+        'usar': 'to use',
+        'ayudar': 'to help',
+        'necesitar': 'to need',
+        'preguntar': 'to ask',
+        
+        # Verbs 51-80
+        'responder': 'to answer, to respond',
+        'jugar': 'to play',
+        'dormir': 'to sleep',
+        'ganar': 'to win, to earn',
+        'perder': 'to lose',
+        'amar': 'to love',
+        'cantar': 'to sing',
+        'bailar': 'to dance',
+        'tocar': 'to touch, to play (instrument)',
+        'cambiar': 'to change',
+        'mover': 'to move',
+        'caminar': 'to walk',
+        'correr': 'to run',
+        'subir': 'to go up, to climb',
+        'bajar': 'to go down, to descend',
+        'explicar': 'to explain',
+        'recordar': 'to remember',
+        'olvidar': 'to forget',
+        'aprender': 'to learn',
+        'enseñar': 'to teach',
+        'viajar': 'to travel',
+        'volar': 'to fly',
+        'conducir': 'to drive',
+        'cocinar': 'to cook',
+        'lavar': 'to wash',
+        'limpiar': 'to clean',
+        'construir': 'to build, to construct',
+        'romper': 'to break',
+        'crear': 'to create',
+        'imaginar': 'to imagine',
+        
+        # Verbs 81-100
+        'soñar': 'to dream',
+        'despertar': 'to wake up',
+        'levantar': 'to lift, to raise',
+        'sentar': 'to seat',
+        'acostar': 'to put to bed',
+        'vestir': 'to dress',
+        'casar': 'to marry',
+        'nacer': 'to be born',
+        'morir': 'to die',
+        'reír': 'to laugh',
+        'llorar': 'to cry',
+        'gritar': 'to shout, to scream',
+        'susurrar': 'to whisper',
+        'cuidar': 'to take care of',
+        'odiar': 'to hate',
+        'manejar': 'to handle, to manage',
+        'reparar': 'to repair, to fix',
+        'duchar': 'to shower',
+        'divorciarse': 'to get divorced',
+        'levantarse': 'to get up'
     }
 }
 
-# Правила грамматики
+# Правила грамматики (остаются прежними)
 GRAMMAR_RULES = {
     'ru': {
         'presente': {
